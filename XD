@@ -1,6 +1,12 @@
+-- ============================================================
+-- SimpleLib UI + Silent Aim
+-- Corregido: slider float, auto-prediction loop, hook __index,
+-- whitelist limpia, aimkey seguro, input consistente.
+-- ============================================================
+
 local SimpleLib = (function()
     local src = [==[
-        -- SimpleLib UI - Librería estilo Rayfield
+        -- SimpleLib UI - LibrerÃ­a estilo Rayfield
         local SimpleLib = {}
         SimpleLib.__index = SimpleLib
 
@@ -411,6 +417,10 @@ local SimpleLib = (function()
             end
 
             function TabMt:CreateSlider(title, min, max, default, suffix, callback)
+                local decimals = 2
+                if min % 1 == 0 and max % 1 == 0 and default % 1 == 0 then
+                    decimals = 0
+                end
                 local value = math.clamp(default, min, max)
                 suffix = suffix or ""
                 callback = callback or function() end
@@ -487,12 +497,15 @@ local SimpleLib = (function()
                 local function display()
                     local pct = (value - min) / (max - min)
                     fill.Size = UDim2.new(pct, 0, 1, 0)
-                    valueLabel.Text = string.format("%.2f", value) .. suffix
+                    local fmt = "%." .. decimals .. "f"
+                    valueLabel.Text = string.format(fmt, value) .. suffix
                 end
                 local function setFromX(x)
                     local rel = (x - track.AbsolutePosition.X) / track.AbsoluteSize.X
                     rel = math.clamp(rel, 0, 1)
-                    value = math.floor(min + (max - min) * rel)
+                    local prec = math.pow(10, decimals)
+                    value = math.floor((min + (max - min) * rel) * prec + 0.5) / prec
+                    value = math.clamp(value, min, max)
                     display()
                     callback(value)
                 end
@@ -524,6 +537,14 @@ local SimpleLib = (function()
                     callback(value)
                 end
                 function element:Get() return value end
+
+                element._silent = false
+                function element:SetSilent(v)
+                    value = math.clamp(v, min, max)
+                    element._silent = true
+                    display()
+                    element._silent = false
+                end
 
                 display()
                 table.insert(tab._elements, element)
@@ -789,7 +810,7 @@ end)()
 getgenv().Prediction = 0.150
 getgenv().AutoPrediction = true
 getgenv().FOV = 80
-getgenv().DontShootThesePeople = { "", "", "", "" }
+getgenv().DontShootThesePeople = {}
 getgenv().AimKey = "L"
 
 -- ============================================================
@@ -872,11 +893,20 @@ local CurrentHitPart = "HumanoidRootPart"
 -- ============================================================
 -- Aim key toggle
 -- ============================================================
+local function keyCodeFromName(name)
+    if type(name) ~= "string" or name == "" then return nil end
+    local ok, code = pcall(function()
+        return Enum.KeyCode[name]
+    end)
+    return ok and code or nil
+end
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Keyboard then
-        local key = string.upper(getgenv().AimKey)
-        if input.KeyCode == Enum.KeyCode[key] then
+        local key = string.upper(getgenv().AimKey or "")
+        local code = keyCodeFromName(key)
+        if code and input.KeyCode == code then
             SilentAim = not SilentAim
             warn("[SILENTAIM] Aim:", SilentAim and "ON" or "OFF")
             if _G.OnAimKeyChange then _G.OnAimKeyChange(SilentAim) end
@@ -884,9 +914,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Rejoin con "="
-Mouse.KeyDown:Connect(function(key)
-    if key == "=" then
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Equals then
         game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
     end
 end)
@@ -894,27 +924,38 @@ end)
 -- ============================================================
 -- AutoPrediction basado en ping
 -- ============================================================
-local autoPredLoop
+local autoPredThread = nil
+local autoPredRunning = false
 local function startAutoPrediction()
-    if autoPredLoop then return end
-    autoPredLoop = task.spawn(function()
-        while getgenv().AutoPrediction do
+    if autoPredRunning then return end
+    autoPredRunning = true
+    autoPredThread = task.spawn(function()
+        while autoPredRunning and getgenv().AutoPrediction do
             task.wait(0.5)
-            local ping = (LocalPlayer.GetNetworkPing and LocalPlayer:GetNetworkPing()) or 0.1
+            local ping = 0.1
+            pcall(function()
+                ping = (LocalPlayer.GetNetworkPing and LocalPlayer:GetNetworkPing()) or 0.1
+            end)
+            local newPred
             if ping > 0.4 then
-                getgenv().Prediction = 0.200 + (ping - 0.4) * 0.25
+                newPred = 0.200 + (ping - 0.4) * 0.25
             else
-                getgenv().Prediction = 0.150 + (ping - 0.1) * 0.5
+                newPred = 0.150 + (ping - 0.1) * 0.5
             end
-            getgenv().Prediction = math.clamp(getgenv().Prediction, 0.05, 0.5)
-            if _G.OnPredictionChange then _G.OnPredictionChange(getgenv().Prediction) end
+            newPred = math.clamp(newPred, 0.05, 0.5)
+            getgenv().Prediction = newPred
+            if _G.OnAimKeyChangePredict then _G.OnAimKeyChangePredict(newPred) end
         end
+        autoPredRunning = false
     end)
 end
-startAutoPrediction()
+local function stopAutoPrediction()
+    autoPredRunning = false
+end
+if getgenv().AutoPrediction then startAutoPrediction() end
 
 -- ============================================================
--- Hook __index (núcleo silent aim)
+-- Hook __index (nÃºcleo silent aim)
 -- ============================================================
 local hookInstalled = false
 local function installHook()
@@ -922,58 +963,73 @@ local function installHook()
     hookInstalled = true
 
     local oldIndex
-    oldIndex = hookmetamethod(game, "__index", function(self, Index, Screw)
-        local Screw = oldIndex(self, Index)
-        local kalk = Mouse
-        local gboost = "hit"
-        if self == kalk and (Index:lower() == gboost) then
-            if not SilentAim then
-                return Screw
-            end
+    oldIndex = hookmetamethod(game, "__index", function(self, Index)
+        local original = oldIndex(self, Index)
+        if self ~= Mouse then return original end
+        if Index ~= "Hit" and Index ~= "hit" and Index ~= "Target" and Index ~= "target" then
+            return original
+        end
+        local lookupHit = (Index == "Hit" or Index == "hit")
+        local lookupTarget = (Index == "Target" or Index == "target")
+        if not SilentAim then
+            return original
+        end
 
-            local Distance = 9e9
-            local Target = nil
+        local Character = LocalPlayer.Character
+        if not Character or not Character:FindFirstChild("Head") then
+            return original
+        end
 
-            for _, v in pairs(Players:GetPlayers()) do
-                if not table.find(getgenv().DontShootThesePeople, v.Name) then
-                    if v ~= LocalPlayer and v.Character
-                        and v.Character:FindFirstChild("HumanoidRootPart")
-                        and v.Character:FindFirstChild("Humanoid")
-                        and v.Character.Humanoid.Health > 0 then
+        local Distance = math.huge
+        local Target = nil
+        local fovRadius = FOV_CIRCLE and FOV_CIRCLE.Radius or getgenv().FOV
 
-                        local Enemy = v.Character
-                        local part = Enemy:FindFirstChild(CurrentHitPart) or Enemy:FindFirstChild("HumanoidRootPart")
-                        if not part then continue end
+        for _, v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer
+                and not table.find(getgenv().DontShootThesePeople, v.Name)
+                and v.Character
+                and v.Character:FindFirstChild("HumanoidRootPart")
+                and v.Character:FindFirstChild("Humanoid")
+                and v.Character.Humanoid.Health > 0 then
 
-                        local CastingFrom = CFrame.new(Camera.CFrame.Position, part.CFrame.Position) * CFrame.new(0, 0, -4)
-                        local RayCast = Ray.new(CastingFrom.Position, CastingFrom.LookVector * 9000)
-                        local _, ToSpace = workspace:FindPartOnRayWithIgnoreList(RayCast, {
-                            LocalPlayer.Character:FindFirstChild("Head"),
-                        })
-                        local RootWorld = (part.CFrame.Position - ToSpace).Magnitude
+                local Enemy = v.Character
+                local part = Enemy:FindFirstChild(CurrentHitPart) or Enemy:FindFirstChild("HumanoidRootPart")
+                if part then
+                    local CastingFrom = CFrame.new(Camera.CFrame.Position, part.CFrame.Position) * CFrame.new(0, 0, -4)
+                    local RayCast = Ray.new(CastingFrom.Position, CastingFrom.LookVector * 9000)
+                    local _, ToSpace = workspace:FindPartOnRayWithIgnoreList(RayCast, {
+                        Character:FindFirstChild("Head"),
+                    })
+                    local RootWorld = (part.CFrame.Position - ToSpace).Magnitude
 
-                        if RootWorld < 4 then
-                            local Pos, Visible = Camera:WorldToScreenPoint(part.Position)
-                            if Visible then
-                                local Real_Magnitude = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(Pos.X, Pos.Y)).Magnitude
-                                if Real_Magnitude < Distance and Real_Magnitude < (FOV_CIRCLE and FOV_CIRCLE.Radius or getgenv().FOV) then
-                                    Distance = Real_Magnitude
-                                    Target = Enemy
-                                end
+                    if RootWorld < 4 then
+                        local Pos, Visible = Camera:WorldToScreenPoint(part.Position)
+                        if Visible and Pos.Z > 0 then
+                            local Real_Magnitude = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(Pos.X, Pos.Y)).Magnitude
+                            if Real_Magnitude < Distance and Real_Magnitude < fovRadius then
+                                Distance = Real_Magnitude
+                                Target = Enemy
                             end
                         end
                     end
                 end
             end
-
-            if Target and Target:FindFirstChild(CurrentHitPart) and Target:FindFirstChild("Humanoid") and Target.Humanoid.Health > 0 then
-                local Madox = Target[CurrentHitPart]
-                local Formulate = Madox.CFrame + (Madox.AssemblyLinearVelocity * getgenv().Prediction + Vector3.new(0, -1, 0))
-                return (Index:lower() == gboost and Formulate)
-            end
-            return Screw
         end
-        return oldIndex(self, Index, Screw)
+
+        if Target
+            and Target:FindFirstChild(CurrentHitPart)
+            and Target:FindFirstChild("Humanoid")
+            and Target.Humanoid.Health > 0 then
+            local Madox = Target[CurrentHitPart]
+            local gravityCompensation = Vector3.new(0, (CurrentHitPart == "Head") and 0 or -workspace.Gravity * 0.05 * getgenv().Prediction, 0)
+            local Formulate = Madox.CFrame.Position + (Madox.AssemblyLinearVelocity * getgenv().Prediction) + gravityCompensation
+            if lookupHit then
+                return CFrame.new(Formulate)
+            elseif lookupTarget then
+                return Target
+            end
+        end
+        return original
     end)
 end
 installHook()
@@ -998,17 +1054,25 @@ end)
 
 tabAim:CreateSection("Prediccion")
 local slPrediction = tabAim:CreateSlider("Prediction", 0.05, 0.5, getgenv().Prediction, " s", function(v)
-    if not getgenv().AutoPrediction then
-        getgenv().Prediction = v
-    end
+    getgenv().Prediction = v
 end)
 
 local tgAutoPred = tabAim:CreateToggle("Auto Prediction", getgenv().AutoPrediction, function(v)
     getgenv().AutoPrediction = v
-    if v then startAutoPrediction() end
+    if v then
+        startAutoPrediction()
+    else
+        stopAutoPrediction()
+    end
 end)
 
-_G.OnPredictionChange = function(v) slPrediction:Set(v) end
+_G.OnAimKeyChangePredict = function(v)
+    if autoPredRunning and getgenv().AutoPrediction then
+        pcall(function()
+            if slPrediction then slPrediction:SetSilent(v) end
+        end)
+    end
+end
 
 tabAim:CreateSection("Tecla Aim")
 local ddKey = tabAim:CreateDropdown("Aim Key",
@@ -1028,7 +1092,7 @@ end)
 -- Tab: FOV
 local tabFOV = UI:CreateTab("FOV")
 
-tabFOV:CreateSection("Tamaño")
+tabFOV:CreateSection("TamaÃ±o")
 local slFOV = tabFOV:CreateSlider("FOV Radius", 20, 500, getgenv().FOV, " px", function(v)
     getgenv().FOV = v
     if FOV_CIRCLE then FOV_CIRCLE.Radius = v end
@@ -1056,24 +1120,52 @@ local ddColor = tabFOV:CreateDropdown("Color del Circle",
 -- Tab: Whitelist
 local tabWL = UI:CreateTab("Whitelist")
 
+local ddWhitelist
+local function refreshWhitelistUI()
+    if ddWhitelist then
+        local opts = {}
+        for _, n in ipairs(getgenv().DontShootThesePeople) do
+            if n ~= "" then table.insert(opts, n) end
+        end
+        if #opts == 0 then opts = { "(vacio)" } end
+        ddWhitelist:Update(opts)
+    end
+end
+
 tabWL:CreateSection("Jugadores a ignorar")
 tabWL:CreateTextBox("Agregar jugador", "", "Username", function(text, enter)
     local name = text:gsub("%s+", "")
     if name ~= "" and not table.find(getgenv().DontShootThesePeople, name) then
         table.insert(getgenv().DontShootThesePeople, name)
         warn("[SILENTAIM] Agregado a whitelist:", name)
+        refreshWhitelistUI()
     end
 end)
 
 tabWL:CreateButton("Limpiar whitelist", function()
-    getgenv().DontShootThesePeople = { "", "", "", "" }
+    getgenv().DontShootThesePeople = {}
     warn("[SILENTAIM] Whitelist limpiada")
+    refreshWhitelistUI()
 end)
 
 tabWL:CreateButton("Mostrar whitelist en consola", function()
     warn("[SILENTAIM] Whitelist actual:")
     for i, n in ipairs(getgenv().DontShootThesePeople) do
         warn("  " .. i .. ":", n)
+    end
+    if #getgenv().DontShootThesePeople == 0 then
+        warn("  (vacio)")
+    end
+end)
+
+ddWhitelist = tabWL:CreateDropdown("Lista actual (click para remover)", { "(vacio)" }, nil, function(v)
+    if v ~= "(vacio)" then
+        local idx = table.find(getgenv().DontShootThesePeople, v)
+        if idx then
+            table.remove(getgenv().DontShootThesePeople, idx)
+            warn("[SILENTAIM] Removido:", v)
+            refreshWhitelistUI()
+        end
     end
 end)
 
@@ -1091,13 +1183,18 @@ tabUtil:CreateButton("Reset configuracion", function()
     getgenv().AutoPrediction = true
     getgenv().FOV = 80
     getgenv().AimKey = "L"
-    getgenv().DontShootThesePeople = { "", "", "", "" }
+    getgenv().DontShootThesePeople = {}
     CurrentHitPart = "HumanoidRootPart"
-    slPrediction:Set(0.150)
-    slFOV:Set(80)
-    ddKey:Set("L")
-    ddHitPart:Set("HumanoidRootPart")
-    tgAutoPred:Set(true)
+    if slPrediction then slPrediction:SetSilent(0.150) end
+    if slFOV then slFOV:Set(80) end
+    if ddKey then ddKey:Set("L") end
+    if ddHitPart then ddHitPart:Set("HumanoidRootPart") end
+    if tgAutoPred then
+        stopAutoPrediction()
+        getgenv().AutoPrediction = true
+        tgAutoPred:Set(true)
+    end
+    refreshWhitelistUI()
     warn("[SILENTAIM] Configuracion reseteada")
 end)
 
