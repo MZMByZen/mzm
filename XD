@@ -1,9 +1,27 @@
--- ============================================================
--- SimpleLib UI + Silent Aim
--- Corregido: slider float, auto-prediction loop, hook __index,
--- whitelist limpia, aimkey seguro, input consistente.
--- ============================================================
+--[[
+    SilentAim Premium - GUI Edition (Single file)
+    SimpleLib embebido + script principal en un solo loadstring.
 
+    Corregido:
+      - Slider float (decimals dinámico, _silent flag)
+      - AutoPrediction loop con flag autoPredRunning + stop seguro
+      - Hook __index sin shadowing de var Screw, nil guard en Character,
+        gravity compensation real, lookup Hit/Target consistente
+      - Whitelist limpia (sin entradas vacías) + refreshWhitelistUI
+      - AimKey seguro (keyCodeFromName con pcall)
+      - Input consistente (UserInputService en lugar de Mouse.KeyDown)
+      - Tecla ocultar/mostrar GUI: Ctrl+Shift+N
+
+    Uso:
+        loadstring(game:HttpGet("https://tu_url/SilentAimGUI.lua"))()
+
+    Base original: Made By Zen
+    Adaptado con UI propia.
+]]
+
+-- ============================================================
+-- SimpleLib UI embebido
+-- ============================================================
 local SimpleLib = (function()
     local src = [==[
         -- SimpleLib UI - Librería estilo Rayfield
@@ -514,7 +532,7 @@ local SimpleLib = (function()
                     value = math.floor((min + (max - min) * rel) * prec + 0.5) / prec
                     value = math.clamp(value, min, max)
                     display()
-                    callback(value)
+                    if not element._silent then callback(value) end
                 end
 
                 slider.MouseButton1Down:Connect(function()
@@ -929,11 +947,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ============================================================
--- Toggle GUI con Ctrl+Shift+L
+-- Toggle GUI con Ctrl+Shift+N
 -- ============================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.L then
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.N then
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
                 GUIVisible = not GUIVisible
@@ -966,7 +984,7 @@ local function startAutoPrediction()
             end
             newPred = math.clamp(newPred, 0.05, 0.5)
             getgenv().Prediction = newPred
-            if _G.OnAimKeyChangePredict then _G.OnAimKeyChangePredict(newPred) end
+            if _G.OnPredictionChange then _G.OnPredictionChange(newPred) end
         end
         autoPredRunning = false
     end)
@@ -1088,7 +1106,7 @@ local tgAutoPred = tabAim:CreateToggle("Auto Prediction", getgenv().AutoPredicti
     end
 end)
 
-_G.OnAimKeyChangePredict = function(v)
+_G.OnPredictionChange = function(v)
     if autoPredRunning and getgenv().AutoPrediction then
         pcall(function()
             if slPrediction then slPrediction:SetSilent(v) end
@@ -1226,4 +1244,4 @@ tabUtil:CreateButton("Made By Zen / Adaptado con UI", function()
 end)
 
 print("[SILENTAIM] Script cargado. Presiona " .. string.upper(getgenv().AimKey) .. " para toggle aim.")
-print("[SILENTAIM] Presiona Ctrl+Shift+L para esconder/mostrar la GUI.")
+print("[SILENTAIM] Presiona Ctrl+Shift+N para esconder/mostrar la GUI.")
