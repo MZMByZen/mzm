@@ -6,7 +6,7 @@
 
 local SimpleLib = (function()
     local src = [==[
-        -- SimpleLib UI - LibrerÃ­a estilo Rayfield
+        -- SimpleLib UI - Librería estilo Rayfield
         local SimpleLib = {}
         SimpleLib.__index = SimpleLib
 
@@ -206,6 +206,13 @@ local SimpleLib = (function()
             self._mainFrame = mainFrame
             self._sidebar = sidebar
             self._pages = pagesFolder
+
+            self._visible = true
+            function self:Toggle(visible)
+                visible = (visible == nil) and not self._visible or visible
+                self._visible = visible
+                mainFrame.Visible = visible
+            end
 
             return self
         end
@@ -805,7 +812,7 @@ local SimpleLib = (function()
 end)()
 
 -- ============================================================
--- Config global
+-- Config global  (Prediction = 0.150 s = "150")
 -- ============================================================
 getgenv().Prediction = 0.150
 getgenv().AutoPrediction = true
@@ -819,6 +826,7 @@ getgenv().AimKey = "L"
 local SilentAim = true
 local ShowFOV = true
 local FOVColor = Color3.fromRGB(0, 255, 0)
+local GUIVisible = true
 
 -- ============================================================
 -- Refs safe
@@ -915,9 +923,23 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Equals then
         game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+    end
+end)
+
+-- ============================================================
+-- Toggle GUI con Ctrl+Shift+L
+-- ============================================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.L then
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+                GUIVisible = not GUIVisible
+                if UI and UI.Toggle then UI:Toggle(GUIVisible) end
+            end
+        end
     end
 end)
 
@@ -955,7 +977,7 @@ end
 if getgenv().AutoPrediction then startAutoPrediction() end
 
 -- ============================================================
--- Hook __index (nÃºcleo silent aim)
+-- Hook __index (núcleo silent aim)
 -- ============================================================
 local hookInstalled = false
 local function installHook()
@@ -1092,7 +1114,7 @@ end)
 -- Tab: FOV
 local tabFOV = UI:CreateTab("FOV")
 
-tabFOV:CreateSection("TamaÃ±o")
+tabFOV:CreateSection("Tamaño")
 local slFOV = tabFOV:CreateSlider("FOV Radius", 20, 500, getgenv().FOV, " px", function(v)
     getgenv().FOV = v
     if FOV_CIRCLE then FOV_CIRCLE.Radius = v end
@@ -1204,3 +1226,4 @@ tabUtil:CreateButton("Made By Zen / Adaptado con UI", function()
 end)
 
 print("[SILENTAIM] Script cargado. Presiona " .. string.upper(getgenv().AimKey) .. " para toggle aim.")
+print("[SILENTAIM] Presiona Ctrl+Shift+L para esconder/mostrar la GUI.")
