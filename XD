@@ -7,10 +7,12 @@ local SimpleLib = (function()
         local SimpleLib = {}
         SimpleLib.__index = SimpleLib
 
+
         local Players = game:GetService("Players")
         local UserInputService = game:GetService("UserInputService")
         local TweenService = game:GetService("TweenService")
         local RunService = game:GetService("RunService")
+
 
         local Theme = {
             Accent = Color3.fromRGB(0, 170, 255),
@@ -28,6 +30,7 @@ local SimpleLib = (function()
             Radius = UDim.new(0, 6),
         }
 
+
         local function create(className, props, children)
             local inst = Instance.new(className)
             for k, v in pairs(props or {}) do
@@ -40,11 +43,13 @@ local SimpleLib = (function()
             return inst
         end
 
+
         function SimpleLib.new(config)
             config = config or {}
             local self = setmetatable({}, SimpleLib)
             self.Tabs = {}
             self.SelectedTab = nil
+
 
             local screenGui = create("ScreenGui", {
                 Name = "SimpleLibUI",
@@ -52,6 +57,7 @@ local SimpleLib = (function()
                 ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
                 Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
             })
+
 
             local mainFrame = create("Frame", {
                 Name = "MainFrame",
@@ -65,6 +71,7 @@ local SimpleLib = (function()
                 create("UICorner", { CornerRadius = Theme.Radius }),
                 create("UIStroke", { Color = Theme.Stroke, Thickness = 1, Transparency = 0.5 }),
             })
+
 
             local topBar = create("Frame", {
                 Name = "TopBar",
@@ -84,7 +91,9 @@ local SimpleLib = (function()
                 }),
             })
 
+
             create("UIStroke", { Parent = topBar, Color = Theme.Stroke, Transparency = 1 })
+
 
             local title = create("TextLabel", {
                 Name = "MZM HUB",
@@ -98,6 +107,7 @@ local SimpleLib = (function()
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Parent = topBar,
             })
+
 
             local closeBtn = create("TextButton", {
                 Name = "Close",
@@ -115,6 +125,7 @@ local SimpleLib = (function()
             }, {
                 create("UICorner", { CornerRadius = UDim.new(0, 4) }),
             })
+
 
             local sidebar = create("Frame", {
                 Name = "Sidebar",
@@ -145,6 +156,7 @@ local SimpleLib = (function()
                 }),
             })
 
+
             local contentArea = create("Frame", {
                 Name = "Content",
                 Size = UDim2.new(1, -160, 1, -44),
@@ -153,7 +165,9 @@ local SimpleLib = (function()
                 Parent = mainFrame,
             })
 
+
             local pagesFolder = create("Folder", { Name = "Pages", Parent = contentArea })
+
 
             do
                 local dragging, dragInput, dragStart, startPos
@@ -186,6 +200,7 @@ local SimpleLib = (function()
                 end)
             end
 
+
             closeBtn.MouseButton1Click:Connect(function() screenGui:Destroy() end)
             closeBtn.MouseEnter:Connect(function()
                 TweenService:Create(closeBtn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
@@ -194,29 +209,48 @@ local SimpleLib = (function()
                 TweenService:Create(closeBtn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
             end)
 
-            mainFrame.Size = UDim2.fromOffset(0, 0)
-            TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                Size = UDim2.fromOffset(560, 420),
-            }):Play()
+
+            -- Arranca oculto; se muestra/oculta con Toggle (tecla N)
+            mainFrame.Size = UDim2.fromOffset(560, 420)
+            mainFrame.Visible = false
+
 
             self._gui = screenGui
             self._mainFrame = mainFrame
             self._sidebar = sidebar
             self._pages = pagesFolder
 
-            self._visible = true
+
+            self._visible = false
             function self:Toggle(visible)
                 visible = (visible == nil) and not self._visible or visible
                 self._visible = visible
-                mainFrame.Visible = visible
+                if visible then
+                    mainFrame.Visible = true
+                    mainFrame.Size = UDim2.fromOffset(0, 0)
+                    TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
+                        Size = UDim2.fromOffset(560, 420),
+                    }):Play()
+                else
+                    local tween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quint), {
+                        Size = UDim2.fromOffset(0, 0),
+                    })
+                    tween.Completed:Connect(function()
+                        if not self._visible then mainFrame.Visible = false end
+                    end)
+                    tween:Play()
+                end
             end
+
 
             return self
         end
 
+
         function SimpleLib:CreateTab(name, icon)
             local tab = {}
             local index = #self.Tabs + 1
+
 
             local tabBtn = create("TextButton", {
                 Name = "Tab",
@@ -236,6 +270,7 @@ local SimpleLib = (function()
                 create("UIPadding", { PaddingLeft = UDim.new(0, 8) }),
             })
 
+
             local accentBar = create("Frame", {
                 Name = "Accent",
                 Size = UDim2.new(0, 3, 1, -8),
@@ -248,6 +283,7 @@ local SimpleLib = (function()
             }, {
                 create("UICorner", { CornerRadius = UDim.new(1, 0) }),
             })
+
 
             local page = create("ScrollingFrame", {
                 Name = "Page_" .. name,
@@ -270,6 +306,7 @@ local SimpleLib = (function()
                 }),
             })
 
+
             local function selectTab()
                 for _, t in ipairs(self.Tabs) do
                     t._page.Visible = false
@@ -288,6 +325,7 @@ local SimpleLib = (function()
                 self.SelectedTab = tab
             end
 
+
             tabBtn.MouseButton1Click:Connect(selectTab)
             tabBtn.MouseEnter:Connect(function()
                 if self.SelectedTab ~= tab then
@@ -300,7 +338,9 @@ local SimpleLib = (function()
                 end
             end)
 
+
             if #self.Tabs == 0 then task.defer(selectTab) end
+
 
             tab._btn = tabBtn
             tab._accentBar = accentBar
@@ -308,8 +348,10 @@ local SimpleLib = (function()
             tab._elements = {}
             table.insert(self.Tabs, tab)
 
+
             local TabMt = {}
             TabMt.__index = TabMt
+
 
             function TabMt:CreateSection(title)
                 local section = create("TextLabel", {
@@ -337,9 +379,11 @@ local SimpleLib = (function()
                 return section
             end
 
+
             function TabMt:CreateToggle(title, default, callback)
                 local state = default and true or false
                 callback = callback or function() end
+
 
                 local toggle = create("TextButton", {
                     Name = "Toggle",
@@ -385,9 +429,11 @@ local SimpleLib = (function()
                     }),
                 })
 
+
                 local container = toggle:FindFirstChild("Container")
                 local knob = container:FindFirstChild("Knob")
                 local element = {}
+
 
                 local function updateVisual()
                     local tc = state and Theme.Accent or Theme.ToggleDisabled
@@ -396,12 +442,14 @@ local SimpleLib = (function()
                     TweenService:Create(knob, TweenInfo.new(0.2), { Position = tp }):Play()
                 end
 
+
                 function element:Set(v)
                     state = v and true or false
                     updateVisual()
                     callback(state)
                 end
                 function element:Get() return state end
+
 
                 toggle.MouseButton1Click:Connect(function() element:Set(not state) end)
                 toggle.MouseEnter:Connect(function()
@@ -411,14 +459,17 @@ local SimpleLib = (function()
                     TweenService:Create(toggle, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
                 end)
 
+
                 if state then
                     container.BackgroundColor3 = Theme.Accent
                     knob.Position = UDim2.new(1, -20, 0.5, 0)
                 end
 
+
                 table.insert(tab._elements, element)
                 return element
             end
+
 
             function TabMt:CreateSlider(title, min, max, default, suffix, callback)
                 local decimals = 2
@@ -428,6 +479,7 @@ local SimpleLib = (function()
                 local value = math.clamp(default, min, max)
                 suffix = suffix or ""
                 callback = callback or function() end
+
 
                 local slider = create("TextButton", {
                     Name = "Slider",
@@ -491,12 +543,14 @@ local SimpleLib = (function()
                     }),
                 })
 
+
                 local track = slider:FindFirstChild("Track")
                 local fill = track:FindFirstChild("Fill")
                 local knob = fill:FindFirstChild("Knob")
                 local valueLabel = slider:FindFirstChild("Value")
                 local dragging = false
                 local element = {}
+
 
                 local function display()
                     local pct = (value - min) / (max - min)
@@ -513,6 +567,7 @@ local SimpleLib = (function()
                     display()
                     if not element._silent then callback(value) end
                 end
+
 
                 slider.MouseButton1Down:Connect(function()
                     dragging = true
@@ -535,12 +590,14 @@ local SimpleLib = (function()
                     TweenService:Create(slider, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
                 end)
 
+
                 function element:Set(v)
                     value = math.clamp(v, min, max)
                     display()
                     callback(value)
                 end
                 function element:Get() return value end
+
 
                 element._silent = false
                 function element:SetSilent(v)
@@ -550,15 +607,19 @@ local SimpleLib = (function()
                     element._silent = false
                 end
 
+
                 display()
                 table.insert(tab._elements, element)
                 return element
             end
 
+
             function TabMt:CreateDropdown(title, options, default, callback)
                 local state = default
                 callback = callback or function() end
                 local expanded = false
+                local baseZ = 1
+
 
                 local dropdown = create("TextButton", {
                     Name = "Dropdown",
@@ -567,6 +628,7 @@ local SimpleLib = (function()
                     AutoButtonColor = false,
                     BorderSizePixel = 0,
                     Text = "",
+                    ZIndex = baseZ,
                     LayoutOrder = #tab._elements + 1,
                     Parent = page,
                 }, {
@@ -624,10 +686,12 @@ local SimpleLib = (function()
                     }),
                 })
 
+
                 local list = dropdown:FindFirstChild("List")
                 local valueLabel = dropdown:FindFirstChild("Value")
                 local arrow = dropdown:FindFirstChild("Arrow")
                 local element = {}
+
 
                 local btns = {}
                 local function buildOptions()
@@ -643,6 +707,8 @@ local SimpleLib = (function()
                             TextSize = 12,
                             TextXAlignment = Enum.TextXAlignment.Left,
                             Parent = list,
+                        }, {
+                            create("UICorner", { CornerRadius = UDim.new(0, 4) }),
                         })
                         b.MouseButton1Click:Connect(function()
                             state = opt
@@ -650,12 +716,27 @@ local SimpleLib = (function()
                             callback(state)
                             element:Close()
                         end)
+                        b.MouseEnter:Connect(function()
+                            TweenService:Create(b, TweenInfo.new(0.12), {
+                                BackgroundTransparency = 0,
+                                BackgroundColor3 = Theme.ElementHover,
+                            }):Play()
+                            TweenService:Create(b, TweenInfo.new(0.12), { TextColor3 = Theme.Text }):Play()
+                        end)
+                        b.MouseLeave:Connect(function()
+                            TweenService:Create(b, TweenInfo.new(0.12), { BackgroundTransparency = 1 }):Play()
+                            TweenService:Create(b, TweenInfo.new(0.12), { TextColor3 = Theme.TextDark }):Play()
+                        end)
                         table.insert(btns, b)
                     end
                 end
 
+
                 function element:Open()
                     expanded = true
+                    -- ZIndex alto para que la lista y los botones se dibujen
+                    -- ENCIMA de los elementos que hay debajo en el ScrollingFrame
+                    dropdown.ZIndex = 50
                     list.Visible = true
                     arrow.Text = "^"
                     local th = #options * 24 + 8
@@ -667,6 +748,7 @@ local SimpleLib = (function()
                     }):Play()
                 end
 
+
                 function element:Close()
                     expanded = false
                     arrow.Text = "v"
@@ -677,19 +759,28 @@ local SimpleLib = (function()
                         Size = UDim2.new(1, 0, 0, 0),
                     }):Play()
                     task.delay(0.16, function()
-                        if not expanded then list.Visible = false end
+                        if not expanded then
+                            list.Visible = false
+                            dropdown.ZIndex = baseZ
+                        end
                     end)
                 end
+
 
                 dropdown.MouseButton1Click:Connect(function()
                     if expanded then element:Close() else element:Open() end
                 end)
                 dropdown.MouseEnter:Connect(function()
-                    TweenService:Create(dropdown, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+                    if not expanded then
+                        TweenService:Create(dropdown, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+                    end
                 end)
                 dropdown.MouseLeave:Connect(function()
-                    TweenService:Create(dropdown, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
+                    if not expanded then
+                        TweenService:Create(dropdown, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
+                    end
                 end)
+
 
                 function element:Set(v)
                     state = v
@@ -702,14 +793,17 @@ local SimpleLib = (function()
                     buildOptions()
                 end
 
+
                 buildOptions()
                 table.insert(tab._elements, element)
                 return element
             end
 
+
             function TabMt:CreateTextBox(title, default, placeholder, callback)
                 local element = {}
                 callback = callback or function() end
+
 
                 local container = create("Frame", {
                     Name = "TextBox",
@@ -750,15 +844,19 @@ local SimpleLib = (function()
                     }),
                 })
 
+
                 local input = container:FindFirstChild("Input")
                 input.FocusLost:Connect(function(enter) callback(input.Text, enter) end)
+
 
                 function element:Set(v) input.Text = v; callback(v, false) end
                 function element:Get() return input.Text end
 
+
                 table.insert(tab._elements, element)
                 return element
             end
+
 
             function TabMt:CreateButton(title, callback)
                 callback = callback or function() end
@@ -779,6 +877,7 @@ local SimpleLib = (function()
                     create("UICorner", { CornerRadius = Theme.Radius }),
                 })
 
+
                 btn.MouseButton1Click:Connect(callback)
                 btn.MouseEnter:Connect(function()
                     TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
@@ -787,26 +886,32 @@ local SimpleLib = (function()
                     TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Accent }):Play()
                 end)
 
+
                 local element = {}
                 function element:Fire() callback() end
                 table.insert(tab._elements, element)
                 return element
             end
 
+
             return TabMt
         end
+
 
         function SimpleLib:Destroy()
             if self._gui and self._gui.Parent then self._gui:Destroy() end
         end
 
+
         return SimpleLib
     ]==]
+
 
     local fn, err = loadstring(src)
     if not fn then error("[SimpleLib] Error al compilar: " .. tostring(err)) end
     return fn()
 end)()
+
 
 -- ============================================================
 -- Config global  (Prediction = 0.150 s = "150")
@@ -817,13 +922,16 @@ getgenv().FOV = 80
 getgenv().DontShootThesePeople = {}
 getgenv().AimKey = "L"
 
+
 -- ============================================================
 -- Estado interno
 -- ============================================================
 local SilentAim = true
-local ShowFOV = true
+local ShowFOV = false
 local FOVColor = Color3.fromRGB(0, 255, 0)
-local GUIVisible = true
+local GUIVisible = false
+local UI   -- declarado aqui para que los handlers lo vean al asignarse mas abajo
+
 
 -- ============================================================
 -- Refs safe
@@ -835,9 +943,11 @@ local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 
+
 local function safe(func, default)
     return func or function(...) return default end
 end
+
 
 getrawmetatable = safe(getrawmetatable, nil)
 setreadonly = safe(setreadonly, nil)
@@ -845,6 +955,7 @@ getconnections = safe(getconnections, function() return {} end)
 hookmetamethod = safe(hookmetamethod, nil)
 getgenv = getgenv or function() return _G end
 Drawing = Drawing or nil
+
 
 -- ============================================================
 -- Limpiar logs
@@ -856,6 +967,7 @@ if getconnections then
         end
     end)
 end
+
 
 -- ============================================================
 -- FOV Circle
@@ -871,6 +983,7 @@ if Drawing then
     FOV_CIRCLE.Radius = getgenv().FOV
     FOV_CIRCLE.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 end
+
 
 local fovLoopRunning = false
 local function startFOVLoop()
@@ -890,10 +1003,12 @@ local function startFOVLoop()
 end
 startFOVLoop()
 
+
 -- ============================================================
 -- Target / hit part
 -- ============================================================
 local CurrentHitPart = "HumanoidRootPart"
+
 
 -- ============================================================
 -- Aim key toggle
@@ -906,6 +1021,7 @@ local function keyCodeFromName(name)
     return ok and code or nil
 end
 
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -913,11 +1029,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local code = keyCodeFromName(key)
         if code and input.KeyCode == code then
             SilentAim = not SilentAim
-            warn("[SILENTAIM] Aim:", SilentAim and "ON" or "OFF")
+            -- El warn lo emite el callback del toggle al sincronizar la UI
             if _G.OnAimKeyChange then _G.OnAimKeyChange(SilentAim) end
         end
     end
 end)
+
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Equals then
@@ -925,20 +1042,18 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+
 -- ============================================================
--- Toggle GUI con Ctrl+Shift+N
+-- Toggle GUI con la tecla N
 -- ============================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.N then
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
-                GUIVisible = not GUIVisible
-                if UI and UI.Toggle then UI:Toggle(GUIVisible) end
-            end
-        end
+        GUIVisible = not GUIVisible
+        if UI and UI.Toggle then UI:Toggle(GUIVisible) end
     end
 end)
+
 
 -- ============================================================
 -- AutoPrediction basado en ping
@@ -973,6 +1088,7 @@ local function stopAutoPrediction()
 end
 if getgenv().AutoPrediction then startAutoPrediction() end
 
+
 -- ============================================================
 -- Hook __index (núcleo silent aim)
 -- ============================================================
@@ -980,6 +1096,7 @@ local hookInstalled = false
 local function installHook()
     if hookInstalled or not hookmetamethod then return end
     hookInstalled = true
+
 
     local oldIndex
     oldIndex = hookmetamethod(game, "__index", function(self, Index)
@@ -994,14 +1111,17 @@ local function installHook()
             return original
         end
 
+
         local Character = LocalPlayer.Character
         if not Character or not Character:FindFirstChild("Head") then
             return original
         end
 
+
         local Distance = math.huge
         local Target = nil
         local fovRadius = FOV_CIRCLE and FOV_CIRCLE.Radius or getgenv().FOV
+
 
         for _, v in ipairs(Players:GetPlayers()) do
             if v ~= LocalPlayer
@@ -1010,6 +1130,7 @@ local function installHook()
                 and v.Character:FindFirstChild("HumanoidRootPart")
                 and v.Character:FindFirstChild("Humanoid")
                 and v.Character.Humanoid.Health > 0 then
+
 
                 local Enemy = v.Character
                 local part = Enemy:FindFirstChild(CurrentHitPart) or Enemy:FindFirstChild("HumanoidRootPart")
@@ -1020,6 +1141,7 @@ local function installHook()
                         Character:FindFirstChild("Head"),
                     })
                     local RootWorld = (part.CFrame.Position - ToSpace).Magnitude
+
 
                     if RootWorld < 4 then
                         local Pos, Visible = Camera:WorldToScreenPoint(part.Position)
@@ -1034,6 +1156,7 @@ local function installHook()
                 end
             end
         end
+
 
         if Target
             and Target:FindFirstChild(CurrentHitPart)
@@ -1053,13 +1176,16 @@ local function installHook()
 end
 installHook()
 
+
 -- ============================================================
 -- GUI
 -- ============================================================
-local UI = SimpleLib.new({ Title = "MZM MENU" })
+UI = SimpleLib.new({ Title = "MZM MENU" })
+
 
 -- Tab: AIM
 local tabAim = UI:CreateTab("Aim")
+
 
 tabAim:CreateSection("General")
 local tgSilent = tabAim:CreateToggle("Silent Aim", SilentAim, function(v)
@@ -1067,14 +1193,24 @@ local tgSilent = tabAim:CreateToggle("Silent Aim", SilentAim, function(v)
     warn("[SILENTAIM] Silent:", v)
 end)
 
+-- Sincroniza el toggle de la UI cuando se cambia el SilentAim con la tecla (L por defecto)
+_G.OnAimKeyChange = function(v)
+    if tgSilent then
+        pcall(function() tgSilent:Set(v) end)
+    end
+end
+
+
 local tgShowFOV = tabAim:CreateToggle("Mostrar FOV Circle", ShowFOV, function(v)
     ShowFOV = v
 end)
+
 
 tabAim:CreateSection("Prediccion")
 local slPrediction = tabAim:CreateSlider("Prediction", 0.05, 0.5, getgenv().Prediction, " s", function(v)
     getgenv().Prediction = v
 end)
+
 
 local tgAutoPred = tabAim:CreateToggle("Auto Prediction", getgenv().AutoPrediction, function(v)
     getgenv().AutoPrediction = v
@@ -1085,6 +1221,7 @@ local tgAutoPred = tabAim:CreateToggle("Auto Prediction", getgenv().AutoPredicti
     end
 end)
 
+
 _G.OnPredictionChange = function(v)
     if autoPredRunning and getgenv().AutoPrediction then
         pcall(function()
@@ -1092,6 +1229,7 @@ _G.OnPredictionChange = function(v)
         end)
     end
 end
+
 
 tabAim:CreateSection("Tecla Aim")
 local ddKey = tabAim:CreateDropdown("Aim Key",
@@ -1103,19 +1241,23 @@ local ddKey = tabAim:CreateDropdown("Aim Key",
     end
 )
 
+
 tabAim:CreateSection("Target Part")
 local ddHitPart = tabAim:CreateDropdown("Hit Part", { "Head", "HumanoidRootPart" }, CurrentHitPart, function(v)
     CurrentHitPart = v
 end)
 
+
 -- Tab: FOV
 local tabFOV = UI:CreateTab("FOV")
+
 
 tabFOV:CreateSection("Tamaño")
 local slFOV = tabFOV:CreateSlider("FOV Radius", 20, 500, getgenv().FOV, " px", function(v)
     getgenv().FOV = v
     if FOV_CIRCLE then FOV_CIRCLE.Radius = v end
 end)
+
 
 tabFOV:CreateSection("Color")
 local ddColor = tabFOV:CreateDropdown("Color del Circle",
@@ -1136,8 +1278,10 @@ local ddColor = tabFOV:CreateDropdown("Color del Circle",
     end
 )
 
+
 -- Tab: Whitelist
 local tabWL = UI:CreateTab("Whitelist")
+
 
 local ddWhitelist
 local function refreshWhitelistUI()
@@ -1151,6 +1295,7 @@ local function refreshWhitelistUI()
     end
 end
 
+
 tabWL:CreateSection("Jugadores a ignorar")
 tabWL:CreateTextBox("Agregar jugador", "", "Username", function(text, enter)
     local name = text:gsub("%s+", "")
@@ -1161,11 +1306,13 @@ tabWL:CreateTextBox("Agregar jugador", "", "Username", function(text, enter)
     end
 end)
 
+
 tabWL:CreateButton("Limpiar whitelist", function()
     getgenv().DontShootThesePeople = {}
     warn("[SILENTAIM] Whitelist limpiada")
     refreshWhitelistUI()
 end)
+
 
 tabWL:CreateButton("Mostrar whitelist en consola", function()
     warn("[SILENTAIM] Whitelist actual:")
@@ -1176,6 +1323,7 @@ tabWL:CreateButton("Mostrar whitelist en consola", function()
         warn("  (vacio)")
     end
 end)
+
 
 ddWhitelist = tabWL:CreateDropdown("Lista actual (click para remover)", { "(vacio)" }, nil, function(v)
     if v ~= "(vacio)" then
@@ -1188,13 +1336,16 @@ ddWhitelist = tabWL:CreateDropdown("Lista actual (click para remover)", { "(vaci
     end
 end)
 
+
 -- Tab: Util
 local tabUtil = UI:CreateTab("Util")
+
 
 tabUtil:CreateSection("Rejoin")
 tabUtil:CreateButton("Rejoin al juego", function()
     game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
 end)
+
 
 tabUtil:CreateSection("Reset")
 tabUtil:CreateButton("Reset configuracion", function()
@@ -1217,10 +1368,12 @@ tabUtil:CreateButton("Reset configuracion", function()
     warn("[SILENTAIM] Configuracion reseteada")
 end)
 
+
 tabUtil:CreateSection("Creditos")
 tabUtil:CreateButton("Made By Zen / Adaptado con UI", function()
     print("[SILENTAIM] Base original: Made By Zen, UI por SimpleLib")
 end)
 
+
 print("[SILENTAIM] Script cargado. Presiona " .. string.upper(getgenv().AimKey) .. " para toggle aim.")
-print("[SILENTAIM] Presiona Ctrl+Shift+N para esconder/mostrar la GUI.")
+print("[SILENTAIM] Presiona N para esconder/mostrar la GUI.")
