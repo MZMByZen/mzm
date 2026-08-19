@@ -1388,11 +1388,17 @@ end)
 
 
 tabAim:CreateSection("Prediccion")
-local tbPrediction = tabAim:CreateTextBox("Prediction", tostring(getgenv().Prediction), "Ej: 0.150", function(text, enter)
+local function formatPred(v)
+    local s = string.format("%.3f", v)
+    if s:sub(1, 2) == "0." then s = "." .. s:sub(3) end
+    return s
+end
+local tbPrediction = tabAim:CreateTextBox("Prediction", formatPred(getgenv().Prediction), ".150", function(text, enter)
     local num = tonumber(text)
     if num then
         getgenv().Prediction = num
         if enter then
+            tbPrediction:Set(formatPred(num))
             warn("[SILENTAIM] Prediction:", num)
         end
     end
@@ -1416,7 +1422,7 @@ end)
 _G.OnPredictionChange = function(v)
     if autoPredRunning and getgenv().AutoPrediction then
         pcall(function()
-            if tbPrediction then tbPrediction:Set(tostring(v)) end
+            if tbPrediction then tbPrediction:Set(formatPred(v)) end
         end)
     end
 end
@@ -1504,13 +1510,14 @@ end
 
 
 tabWL:CreateSection("Jugadores a ignorar")
-tabWL:CreateTextBox("Agregar jugador", "", "Username", function(text, enter)
-    local name = text:gsub("%s+", "")
-    if name ~= "" and not table.find(getgenv().DontShootThesePeople, name) then
-        table.insert(getgenv().DontShootThesePeople, name)
-        warn("[SILENTAIM] Agregado a whitelist:", name)
-        refreshWhitelistUI()
+tabWL:CreateTextBox("Agregar jugador(es)", "", "Usuario1, Usuario2, ...", function(text, enter)
+    for name in string.gmatch(text, "[^,%s]+") do
+        if name ~= "" and not table.find(getgenv().DontShootThesePeople, name) then
+            table.insert(getgenv().DontShootThesePeople, name)
+            warn("[SILENTAIM] Agregado a whitelist:", name)
+        end
     end
+    refreshWhitelistUI()
 end)
 
 
@@ -1567,7 +1574,7 @@ tabUtil:CreateButton("Reset configuracion", function()
     getgenv().AimKey = "L"
     getgenv().DontShootThesePeople = {}
     CurrentHitPart = "HumanoidRootPart"
-    if tbPrediction then tbPrediction:Set("0.150") end
+    if tbPrediction then tbPrediction:Set(formatPred(0.150)) end
     if slFOV then slFOV:Set(80) end
     if ddKey then ddKey:Set("L") end
     if ddHitPart then ddHitPart:Set("HumanoidRootPart") end
