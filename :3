@@ -1,0 +1,61 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+local enabled = false
+local lastUpdateTime = 0
+local lagInterval = 0.3 -- tiempo que te quedas congelado
+local hopDistance = 9.5 -- tiempo de salto
+
+---teclas de activacion
+
+local function getRoot()
+    return player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+end
+
+local function getHumanoid()
+    return player.Character and player.Character:FindFirstChild("Humanoid")
+end
+
+---funciÃ³n de movimiento
+RunService.Heartbeat:Connect(function()
+    if not enabled then return end
+    
+    local root = getRoot()
+    local hum = getHumanoid()
+    if not root or not hum then return end
+
+    local now = tick()
+    
+    -- congelamos el personaje
+    if now - lastUpdateTime >= lagInterval then
+        root.Anchored = false -- Te descongelas
+        
+       --calculo
+        local moveDir = hum.MoveDirection
+        if moveDir.Magnitude > 0 then
+            
+            root.CFrame = root.CFrame + (moveDir * hopDistance)
+        end
+        
+        lastUpdateTime = now
+    else
+       
+        root.Anchored = true 
+    end
+end)
+
+---teclas
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        enabled = true
+       
+    elseif input.KeyCode == Enum.KeyCode.C then
+        enabled = false
+        local root = getRoot()
+        if root then root.Anchored = false end
+        
+    end
+end)
