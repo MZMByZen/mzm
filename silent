@@ -1,0 +1,1599 @@
+-- ============================================================-- SimpleLib UI embebido
+-- ============================================================
+local SimpleLib = (function()
+    local src = [==[
+        -- SimpleLib UI - Librería estilo Rayfield
+        local SimpleLib = {}
+        SimpleLib.__index = SimpleLib
+
+
+
+
+        local Players = game:GetService("Players")
+        local UserInputService = game:GetService("UserInputService")
+        local TweenService = game:GetService("TweenService")
+        local RunService = game:GetService("RunService")
+
+
+
+
+        local Theme = {
+            Accent = Color3.fromRGB(0, 170, 255),
+            Background = Color3.fromRGB(25, 25, 30),
+            Sidebar = Color3.fromRGB(20, 20, 25),
+            Text = Color3.fromRGB(240, 240, 240),
+            TextDark = Color3.fromRGB(160, 160, 170),
+            Element = Color3.fromRGB(40, 40, 48),
+            ElementHover = Color3.fromRGB(50, 50, 58),
+            HoverBackground = Color3.fromRGB(255, 255, 255),
+            TabBackground = Color3.fromRGB(30, 30, 35),
+            ToggleDisabled = Color3.fromRGB(70, 70, 80),
+            Stroke = Color3.fromRGB(60, 60, 70),
+            Font = Enum.Font.Gotham,
+            Radius = UDim.new(0, 6),
+        }
+
+
+
+
+        local function create(className, props, children)
+            local inst = Instance.new(className)
+            for k, v in pairs(props or {}) do
+                if k ~= "Parent" then inst[k] = v end
+            end
+            for _, child in ipairs(children or {}) do
+                child.Parent = inst
+            end
+            if props and props.Parent then inst.Parent = props.Parent end
+            return inst
+        end
+
+
+
+
+        function SimpleLib.new(config)
+            config = config or {}
+            local self = setmetatable({}, SimpleLib)
+            self.Tabs = {}
+            self.SelectedTab = nil
+
+
+
+
+            local screenGui = create("ScreenGui", {
+                Name = "SimpleLibUI",
+                ResetOnSpawn = false,
+                ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+                Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
+            })
+
+
+
+
+            local mainFrame = create("Frame", {
+                Name = "MainFrame",
+                Size = UDim2.fromOffset(560, 420),
+                Position = UDim2.fromScale(0.5, 0.5),
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundColor3 = Theme.Background,
+                BorderSizePixel = 0,
+                Parent = screenGui,
+            }, {
+                create("UICorner", { CornerRadius = Theme.Radius }),
+                create("UIStroke", { Color = Theme.Stroke, Thickness = 1, Transparency = 0.5 }),
+            })
+
+
+
+
+            local topBar = create("Frame", {
+                Name = "TopBar",
+                Size = UDim2.new(1, 0, 0, 44),
+                BackgroundColor3 = Theme.Sidebar,
+                BorderSizePixel = 0,
+                Parent = mainFrame,
+            }, {
+                create("UICorner", { CornerRadius = Theme.Radius }),
+                create("Frame", {
+                    Name = "Divider",
+                    Size = UDim2.new(1, 0, 0, 1),
+                    Position = UDim2.new(0, 0, 1, -1),
+                    BackgroundColor3 = Theme.Stroke,
+                    BorderSizePixel = 0,
+                    BackgroundTransparency = 0.5,
+                }),
+            })
+
+
+
+
+            create("UIStroke", { Parent = topBar, Color = Theme.Stroke, Transparency = 1 })
+
+
+
+
+            local title = create("TextLabel", {
+                Name = "MZM HUB",
+                Size = UDim2.new(1, -120, 1, 0),
+                Position = UDim2.fromOffset(16, 0),
+                BackgroundTransparency = 1,
+                Font = Theme.Font,
+                Text = config.Title or "SimpleLib",
+                TextColor3 = Theme.Text,
+                TextSize = 16,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = topBar,
+            })
+
+
+
+
+            local closeBtn = create("TextButton", {
+                Name = "Close",
+                Size = UDim2.fromOffset(32, 32),
+                Position = UDim2.new(1, -38, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundColor3 = Theme.Element,
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                Text = "X",
+                Font = Theme.Font,
+                TextSize = 14,
+                TextColor3 = Theme.Text,
+                Parent = topBar,
+            }, {
+                create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+            })
+
+
+
+
+            local sidebar = create("Frame", {
+                Name = "Sidebar",
+                Size = UDim2.new(0, 160, 1, -44),
+                Position = UDim2.fromOffset(0, 44),
+                BackgroundColor3 = Theme.Sidebar,
+                BorderSizePixel = 0,
+                Parent = mainFrame,
+            }, {
+                create("UICorner", { CornerRadius = Theme.Radius }),
+                create("Frame", {
+                    Name = "Divider",
+                    Size = UDim2.new(0, 1, 1, 0),
+                    Position = UDim2.new(1, -1, 0, 0),
+                    BackgroundColor3 = Theme.Stroke,
+                    BorderSizePixel = 0,
+                    BackgroundTransparency = 0.5,
+                }),
+                create("UIPadding", {
+                    PaddingTop = UDim.new(0, 8),
+                    PaddingBottom = UDim.new(0, 8),
+                    PaddingLeft = UDim.new(0, 8),
+                    PaddingRight = UDim.new(0, 8),
+                }),
+                create("UIListLayout", {
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Padding = UDim.new(0, 6),
+                }),
+            })
+
+
+
+
+            local contentArea = create("Frame", {
+                Name = "Content",
+                Size = UDim2.new(1, -160, 1, -44),
+                Position = UDim2.fromOffset(160, 44),
+                BackgroundTransparency = 1,
+                Parent = mainFrame,
+            })
+
+
+
+
+            local pagesFolder = create("Folder", { Name = "Pages", Parent = contentArea })
+
+
+
+
+            do
+                local dragging, dragInput, dragStart, startPos
+                local function update(input)
+                    local delta = input.Position - dragStart
+                    mainFrame.Position = UDim2.new(
+                        startPos.X.Scale, startPos.X.Offset + delta.X,
+                        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                    )
+                end
+                topBar.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = true
+                        dragStart = input.Position
+                        startPos = mainFrame.Position
+                    end
+                end)
+                topBar.InputChanged:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseMovement then
+                        dragInput = input
+                    end
+                end)
+                UserInputService.InputChanged:Connect(function(input)
+                    if input == dragInput and dragging then update(input) end
+                end)
+                UserInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = false
+                    end
+                end)
+            end
+
+
+
+
+            closeBtn.MouseButton1Click:Connect(function() screenGui:Destroy() end)
+            closeBtn.MouseEnter:Connect(function()
+                TweenService:Create(closeBtn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+            end)
+            closeBtn.MouseLeave:Connect(function()
+                TweenService:Create(closeBtn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
+            end)
+
+
+
+
+            -- Arranca oculto; se muestra/oculta con Toggle (tecla Shift+N)
+            mainFrame.Size = UDim2.fromOffset(560, 420)
+            mainFrame.Visible = false
+
+
+
+
+            self._gui = screenGui
+            self._mainFrame = mainFrame
+            self._sidebar = sidebar
+            self._pages = pagesFolder
+
+
+
+
+            self._visible = false
+            function self:Toggle(visible)
+                visible = (visible == nil) and not self._visible or visible
+                self._visible = visible
+                if visible then
+                    mainFrame.Visible = true
+                    mainFrame.Size = UDim2.fromOffset(0, 0)
+                    TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
+                        Size = UDim2.fromOffset(560, 420),
+                    }):Play()
+                else
+                    local tween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quint), {
+                        Size = UDim2.fromOffset(0, 0),
+                    })
+                    tween.Completed:Connect(function()
+                        if not self._visible then mainFrame.Visible = false end
+                    end)
+                    tween:Play()
+                end
+            end
+
+
+
+
+            return self
+        end
+
+
+
+
+        function SimpleLib:CreateTab(name, icon)
+            local tab = {}
+            local index = #self.Tabs + 1
+
+
+
+
+            local tabBtn = create("TextButton", {
+                Name = "Tab",
+                Size = UDim2.new(1, 0, 0, 36),
+                BackgroundColor3 = Theme.Element,
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                Font = Theme.Font,
+                Text = "  " .. name,
+                TextColor3 = Theme.TextDark,
+                TextSize = 13,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                LayoutOrder = index,
+                Parent = self._sidebar,
+            }, {
+                create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+                create("UIPadding", { PaddingLeft = UDim.new(0, 8) }),
+            })
+
+
+
+
+            local accentBar = create("Frame", {
+                Name = "Accent",
+                Size = UDim2.new(0, 3, 1, -8),
+                Position = UDim2.new(0, 0, 0.5, 0),
+                AnchorPoint = Vector2.new(0, 0.5),
+                BackgroundColor3 = Theme.Accent,
+                BorderSizePixel = 0,
+                Visible = false,
+                Parent = tabBtn,
+            }, {
+                create("UICorner", { CornerRadius = UDim.new(1, 0) }),
+            })
+
+
+
+
+            local page = create("ScrollingFrame", {
+                Name = "Page_" .. name,
+                Size = UDim2.new(1, -24, 1, -24),
+                Position = UDim2.fromOffset(12, 12),
+                BackgroundTransparency = 1,
+                BorderSizePixel = 0,
+                ScrollBarThickness = 4,
+                ScrollBarImageColor3 = Theme.Stroke,
+                CanvasSize = UDim2.new(0, 0, 0, 0),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                Visible = false,
+                Parent = self._pages,
+            }, {
+                create("UIPadding", { PaddingRight = UDim.new(0, 8) }),
+                create("UIListLayout", {
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Padding = UDim.new(0, 8),
+                    VerticalAlignment = Enum.VerticalAlignment.Top,
+                }),
+            })
+
+
+
+
+            local function selectTab()
+                for _, t in ipairs(self.Tabs) do
+                    t._page.Visible = false
+                    TweenService:Create(t._btn, TweenInfo.new(0.2), {
+                        TextColor3 = Theme.TextDark,
+                        BackgroundColor3 = Theme.Element,
+                    }):Play()
+                    t._accentBar.Visible = false
+                end
+                page.Visible = true
+                TweenService:Create(tabBtn, TweenInfo.new(0.2), {
+                    TextColor3 = Theme.Text,
+                    BackgroundColor3 = Theme.ElementHover,
+                }):Play()
+                accentBar.Visible = true
+                self.SelectedTab = tab
+            end
+
+
+
+
+            tabBtn.MouseButton1Click:Connect(selectTab)
+            tabBtn.MouseEnter:Connect(function()
+                if self.SelectedTab ~= tab then
+                    TweenService:Create(tabBtn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+                end
+            end)
+            tabBtn.MouseLeave:Connect(function()
+                if self.SelectedTab ~= tab then
+                    TweenService:Create(tabBtn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
+                end
+            end)
+
+
+
+
+            if #self.Tabs == 0 then task.defer(selectTab) end
+
+
+
+
+            tab._btn = tabBtn
+            tab._accentBar = accentBar
+            tab._page = page
+            tab._elements = {}
+            table.insert(self.Tabs, tab)
+
+
+
+
+            local TabMt = {}
+            TabMt.__index = TabMt
+
+
+
+
+            function TabMt:CreateSection(title)
+                local section = create("TextLabel", {
+                    Name = "Section",
+                    Size = UDim2.new(1, 0, 0, 24),
+                    BackgroundTransparency = 1,
+                    Font = Theme.Font,
+                    Text = title,
+                    TextColor3 = Theme.Accent,
+                    TextSize = 13,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    LayoutOrder = #tab._elements + 1,
+                    Parent = page,
+                })
+                create("Frame", {
+                    Name = "Underline",
+                    Size = UDim2.new(1, 0, 0, 1),
+                    Position = UDim2.new(0, 0, 1, -1),
+                    BackgroundColor3 = Theme.Stroke,
+                    BorderSizePixel = 0,
+                    BackgroundTransparency = 0.5,
+                    Parent = section,
+                })
+                table.insert(tab._elements, section)
+                return section
+            end
+
+
+
+
+            function TabMt:CreateToggle(title, default, callback)
+                local state = default and true or false
+                callback = callback or function() end
+
+
+
+
+                local toggle = create("TextButton", {
+                    Name = "Toggle",
+                    Size = UDim2.new(1, 0, 0, 44),
+                    BackgroundColor3 = Theme.Element,
+                    AutoButtonColor = false,
+                    BorderSizePixel = 0,
+                    Text = "",
+                    LayoutOrder = #tab._elements + 1,
+                    Parent = page,
+                }, {
+                    create("UICorner", { CornerRadius = Theme.Radius }),
+                    create("TextLabel", {
+                        Name = "Label",
+                        Size = UDim2.new(1, -64, 1, 0),
+                        Position = UDim2.fromOffset(12, 0),
+                        BackgroundTransparency = 1,
+                        Font = Theme.Font,
+                        Text = title,
+                        TextColor3 = Theme.Text,
+                        TextSize = 13,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                    }),
+                    create("Frame", {
+                        Name = "Container",
+                        Size = UDim2.fromOffset(40, 22),
+                        Position = UDim2.new(1, -12, 0.5, 0),
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        BackgroundColor3 = Theme.ToggleDisabled,
+                        BorderSizePixel = 0,
+                    }, {
+                        create("UICorner", { CornerRadius = UDim.new(1, 0) }),
+                        create("Frame", {
+                            Name = "Knob",
+                            Size = UDim2.fromOffset(18, 18),
+                            Position = UDim2.new(0, 2, 0.5, 0),
+                            AnchorPoint = Vector2.new(0, 0.5),
+                            BackgroundColor3 = Theme.Text,
+                            BorderSizePixel = 0,
+                        }, {
+                            create("UICorner", { CornerRadius = UDim.new(1, 0) }),
+                        }),
+                    }),
+                })
+
+
+
+
+                local container = toggle:FindFirstChild("Container")
+                local knob = container:FindFirstChild("Knob")
+                local element = {}
+
+
+
+
+                local function updateVisual()
+                    local tc = state and Theme.Accent or Theme.ToggleDisabled
+                    local tp = state and UDim2.new(1, -20, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
+                    TweenService:Create(container, TweenInfo.new(0.2), { BackgroundColor3 = tc }):Play()
+                    TweenService:Create(knob, TweenInfo.new(0.2), { Position = tp }):Play()
+                end
+
+
+
+
+                function element:Set(v)
+                    state = v and true or false
+                    updateVisual()
+                    callback(state)
+                end
+                function element:Get() return state end
+
+
+
+
+                toggle.MouseButton1Click:Connect(function() element:Set(not state) end)
+                toggle.MouseEnter:Connect(function()
+                    TweenService:Create(toggle, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+                end)
+                toggle.MouseLeave:Connect(function()
+                    TweenService:Create(toggle, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
+                end)
+
+
+
+
+                if state then
+                    container.BackgroundColor3 = Theme.Accent
+                    knob.Position = UDim2.new(1, -20, 0.5, 0)
+                end
+
+
+
+
+                table.insert(tab._elements, element)
+                return element
+            end
+
+
+
+
+            function TabMt:CreateSlider(title, min, max, default, suffix, callback)
+                local decimals = 2
+                if min % 1 == 0 and max % 1 == 0 and default % 1 == 0 then
+                    decimals = 0
+                end
+                local value = math.clamp(default, min, max)
+                suffix = suffix or ""
+                callback = callback or function() end
+
+
+
+
+                local slider = create("TextButton", {
+                    Name = "Slider",
+                    Size = UDim2.new(1, 0, 0, 44),
+                    BackgroundColor3 = Theme.Element,
+                    AutoButtonColor = false,
+                    BorderSizePixel = 0,
+                    Text = "",
+                    LayoutOrder = #tab._elements + 1,
+                    Parent = page,
+                }, {
+                    create("UICorner", { CornerRadius = Theme.Radius }),
+                    create("TextLabel", {
+                        Name = "Label",
+                        Size = UDim2.new(1, -12, 0, 20),
+                        Position = UDim2.fromOffset(12, 4),
+                        BackgroundTransparency = 1,
+                        Font = Theme.Font,
+                        Text = title,
+                        TextColor3 = Theme.Text,
+                        TextSize = 12,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                    }),
+                    create("TextLabel", {
+                        Name = "Value",
+                        Size = UDim2.new(1, -12, 0, 16),
+                        Position = UDim2.new(1, -12, 0, 4),
+                        BackgroundTransparency = 1,
+                        Font = Theme.Font,
+                        Text = tostring(value) .. suffix,
+                        TextColor3 = Theme.TextDark,
+                        TextSize = 11,
+                        TextXAlignment = Enum.TextXAlignment.Right,
+                    }),
+                    create("Frame", {
+                        Name = "Track",
+                        Size = UDim2.new(1, -24, 0, 4),
+                        Position = UDim2.new(0, 12, 0, 30),
+                        BackgroundColor3 = Theme.ToggleDisabled,
+                        BorderSizePixel = 0,
+                    }, {
+                        create("UICorner", { CornerRadius = UDim.new(1, 0) }),
+                        create("Frame", {
+                            Name = "Fill",
+                            Size = UDim2.new((value - min) / (max - min), 0, 1, 0),
+                            BackgroundColor3 = Theme.Accent,
+                            BorderSizePixel = 0,
+                        }, {
+                            create("UICorner", { CornerRadius = UDim.new(1, 0) }),
+                            create("Frame", {
+                                Name = "Knob",
+                                Size = UDim2.fromOffset(12, 12),
+                                Position = UDim2.new(1, -6, 0.5, 0),
+                                AnchorPoint = Vector2.new(0, 0.5),
+                                BackgroundColor3 = Theme.Text,
+                                BorderSizePixel = 0,
+                            }, {
+                                create("UICorner", { CornerRadius = UDim.new(1, 0) }),
+                            }),
+                        }),
+                    }),
+                })
+
+
+
+
+                local track = slider:FindFirstChild("Track")
+                local fill = track:FindFirstChild("Fill")
+                local knob = fill:FindFirstChild("Knob")
+                local valueLabel = slider:FindFirstChild("Value")
+                local dragging = false
+                local element = {}
+
+
+
+
+                local function display()
+                    local pct = (value - min) / (max - min)
+                    fill.Size = UDim2.new(pct, 0, 1, 0)
+                    local fmt = "%." .. decimals .. "f"
+                    valueLabel.Text = string.format(fmt, value) .. suffix
+                end
+                local function setFromX(x)
+                    local rel = (x - track.AbsolutePosition.X) / track.AbsoluteSize.X
+                    rel = math.clamp(rel, 0, 1)
+                    local prec = math.pow(10, decimals)
+                    value = math.floor((min + (max - min) * rel) * prec + 0.5) / prec
+                    value = math.clamp(value, min, max)
+                    display()
+                    if not element._silent then callback(value) end
+                end
+
+
+
+
+                slider.MouseButton1Down:Connect(function()
+                    dragging = true
+                    setFromX(UserInputService:GetMouseLocation().X)
+                end)
+                UserInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = false
+                    end
+                end)
+                UserInputService.InputChanged:Connect(function(input)
+                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                        setFromX(input.Position.X)
+                    end
+                end)
+                slider.MouseEnter:Connect(function()
+                    TweenService:Create(slider, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+                end)
+                slider.MouseLeave:Connect(function()
+                    TweenService:Create(slider, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
+                end)
+
+
+
+
+                function element:Set(v)
+                    value = math.clamp(v, min, max)
+                    display()
+                    callback(value)
+                end
+                function element:Get() return value end
+
+
+
+
+                element._silent = false
+                function element:SetSilent(v)
+                    value = math.clamp(v, min, max)
+                    element._silent = true
+                    display()
+                    element._silent = false
+                end
+
+
+
+
+                display()
+                table.insert(tab._elements, element)
+                return element
+            end
+
+
+
+
+            function TabMt:CreateDropdown(title, options, default, callback)
+                local state = default
+                callback = callback or function() end
+                local expanded = false
+                local baseZ = 1
+
+
+
+
+                local dropdown = create("TextButton", {
+                    Name = "Dropdown",
+                    Size = UDim2.new(1, 0, 0, 44),
+                    BackgroundColor3 = Theme.Element,
+                    AutoButtonColor = false,
+                    BorderSizePixel = 0,
+                    Text = "",
+                    ZIndex = baseZ,
+                    LayoutOrder = #tab._elements + 1,
+                    Parent = page,
+                }, {
+                    create("UICorner", { CornerRadius = Theme.Radius }),
+                    create("TextLabel", {
+                        Name = "Label",
+                        Size = UDim2.new(1, -12, 0, 16),
+                        Position = UDim2.fromOffset(12, 4),
+                        BackgroundTransparency = 1,
+                        Font = Theme.Font,
+                        Text = title,
+                        TextColor3 = Theme.Text,
+                        TextSize = 12,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                    }),
+                    create("TextLabel", {
+                        Name = "Value",
+                        Size = UDim2.new(1, -24, 0, 16),
+                        Position = UDim2.fromOffset(12, 20),
+                        BackgroundTransparency = 1,
+                        Font = Theme.Font,
+                        Text = state or "Selecciona...",
+                        TextColor3 = Theme.Accent,
+                        TextSize = 12,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                    }),
+                    create("TextLabel", {
+                        Name = "Arrow",
+                        Size = UDim2.fromOffset(20, 44),
+                        Position = UDim2.new(1, -20, 0, 0),
+                        BackgroundTransparency = 1,
+                        Font = Theme.Font,
+                        Text = "v",
+                        TextColor3 = Theme.TextDark,
+                        TextSize = 12,
+                    }),
+                    create("Frame", {
+                        Name = "List",
+                        Size = UDim2.new(1, 0, 0, 0),
+                        Position = UDim2.fromOffset(0, 44),
+                        BackgroundColor3 = Theme.Sidebar,
+                        BorderSizePixel = 0,
+                        ClipsDescendants = true,
+                        Visible = false,
+                    }, {
+                        create("UICorner", { CornerRadius = Theme.Radius }),
+                        create("UIPadding", {
+                            PaddingTop = UDim.new(0, 4),
+                            PaddingBottom = UDim.new(0, 4),
+                        }),
+                        create("UIListLayout", {
+                            SortOrder = Enum.SortOrder.LayoutOrder,
+                            Padding = UDim.new(0, 2),
+                        }),
+                    }),
+                })
+
+
+
+
+                local list = dropdown:FindFirstChild("List")
+                local valueLabel = dropdown:FindFirstChild("Value")
+                local arrow = dropdown:FindFirstChild("Arrow")
+                local element = {}
+
+
+
+
+                local btns = {}
+                local function buildOptions()
+                    for _, b in ipairs(btns) do b:Destroy() end
+                    btns = {}
+                    for _, opt in ipairs(options) do
+                        local b = create("TextButton", {
+                            Size = UDim2.new(1, 0, 0, 22),
+                            BackgroundTransparency = 1,
+                            Font = Theme.Font,
+                            Text = "  " .. tostring(opt),
+                            TextColor3 = Theme.TextDark,
+                            TextSize = 12,
+                            TextXAlignment = Enum.TextXAlignment.Left,
+                            Parent = list,
+                        }, {
+                            create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+                        })
+                        b.MouseButton1Click:Connect(function()
+                            state = opt
+                            valueLabel.Text = tostring(opt)
+                            callback(state)
+                            element:Close()
+                        end)
+                        b.MouseEnter:Connect(function()
+                            TweenService:Create(b, TweenInfo.new(0.12), {
+                                BackgroundTransparency = 0,
+                                BackgroundColor3 = Theme.ElementHover,
+                            }):Play()
+                            TweenService:Create(b, TweenInfo.new(0.12), { TextColor3 = Theme.Text }):Play()
+                        end)
+                        b.MouseLeave:Connect(function()
+                            TweenService:Create(b, TweenInfo.new(0.12), { BackgroundTransparency = 1 }):Play()
+                            TweenService:Create(b, TweenInfo.new(0.12), { TextColor3 = Theme.TextDark }):Play()
+                        end)
+                        table.insert(btns, b)
+                    end
+                end
+
+
+
+
+                function element:Open()
+                    expanded = true
+                    -- ZIndex alto para que la lista y los botones se dibujen
+                    -- ENCIMA de los elementos que hay debajo en el ScrollingFrame
+                    dropdown.ZIndex = 50
+                    list.Visible = true
+                    arrow.Text = "^"
+                    local th = #options * 24 + 8
+                    TweenService:Create(dropdown, TweenInfo.new(0.15), {
+                        Size = UDim2.new(1, 0, 0, 44 + th),
+                    }):Play()
+                    TweenService:Create(list, TweenInfo.new(0.15), {
+                        Size = UDim2.new(1, 0, 0, th),
+                    }):Play()
+                end
+
+
+
+
+                function element:Close()
+                    expanded = false
+                    arrow.Text = "v"
+                    TweenService:Create(dropdown, TweenInfo.new(0.15), {
+                        Size = UDim2.new(1, 0, 0, 44),
+                    }):Play()
+                    TweenService:Create(list, TweenInfo.new(0.15), {
+                        Size = UDim2.new(1, 0, 0, 0),
+                    }):Play()
+                    task.delay(0.16, function()
+                        if not expanded then
+                            list.Visible = false
+                            dropdown.ZIndex = baseZ
+                        end
+                    end)
+                end
+
+
+
+
+                dropdown.MouseButton1Click:Connect(function()
+                    if expanded then element:Close() else element:Open() end
+                end)
+                dropdown.MouseEnter:Connect(function()
+                    if not expanded then
+                        TweenService:Create(dropdown, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+                    end
+                end)
+                dropdown.MouseLeave:Connect(function()
+                    if not expanded then
+                        TweenService:Create(dropdown, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Element }):Play()
+                    end
+                end)
+
+
+
+
+                function element:Set(v)
+                    state = v
+                    valueLabel.Text = tostring(v)
+                    callback(state)
+                end
+                function element:Get() return state end
+                function element:Update(newOptions)
+                    options = newOptions
+                    buildOptions()
+                end
+
+
+
+
+                buildOptions()
+                table.insert(tab._elements, element)
+                return element
+            end
+
+
+
+
+            function TabMt:CreateTextBox(title, default, placeholder, callback)
+                local element = {}
+                callback = callback or function() end
+
+
+
+
+                local container = create("Frame", {
+                    Name = "TextBox",
+                    Size = UDim2.new(1, 0, 0, 44),
+                    BackgroundColor3 = Theme.Element,
+                    BorderSizePixel = 0,
+                    LayoutOrder = #tab._elements + 1,
+                    Parent = page,
+                }, {
+                    create("UICorner", { CornerRadius = Theme.Radius }),
+                    create("TextLabel", {
+                        Name = "Label",
+                        Size = UDim2.new(0, 100, 1, 0),
+                        Position = UDim2.fromOffset(12, 0),
+                        BackgroundTransparency = 1,
+                        Font = Theme.Font,
+                        Text = title,
+                        TextColor3 = Theme.Text,
+                        TextSize = 12,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                    }),
+                    create("TextBox", {
+                        Name = "Input",
+                        Size = UDim2.new(1, -120, 0, 24),
+                        Position = UDim2.new(1, -12, 0.5, 0),
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        BackgroundColor3 = Theme.Background,
+                        Font = Theme.Font,
+                        Text = default or "",
+                        PlaceholderText = placeholder or title,
+                        TextColor3 = Theme.Text,
+                        PlaceholderColor3 = Theme.TextDark,
+                        TextSize = 12,
+                        ClearTextOnFocus = false,
+                        Parent = container,
+                    }, {
+                        create("UICorner", { CornerRadius = UDim.new(0, 4) }),
+                    }),
+                })
+
+
+
+
+                local input = container:FindFirstChild("Input")
+                input.FocusLost:Connect(function(enter) callback(input.Text, enter) end)
+
+
+
+
+                function element:Set(v) input.Text = v; callback(v, false) end
+                function element:Get() return input.Text end
+
+
+
+
+                table.insert(tab._elements, element)
+                return element
+            end
+
+
+
+
+            function TabMt:CreateButton(title, callback)
+                callback = callback or function() end
+                local btn = create("TextButton", {
+                    Name = "Button",
+                    Size = UDim2.new(1, 0, 0, 36),
+                    BackgroundColor3 = Theme.Accent,
+                    AutoButtonColor = false,
+                    BorderSizePixel = 0,
+                    Font = Theme.Font,
+                    Text = title,
+                    TextColor3 = Theme.Text,
+                    TextSize = 13,
+                    TextXAlignment = Enum.TextXAlignment.Center,
+                    LayoutOrder = #tab._elements + 1,
+                    Parent = page,
+                }, {
+                    create("UICorner", { CornerRadius = Theme.Radius }),
+                })
+
+
+
+
+                btn.MouseButton1Click:Connect(callback)
+                btn.MouseEnter:Connect(function()
+                    TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.ElementHover }):Play()
+                end)
+                btn.MouseLeave:Connect(function()
+                    TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Accent }):Play()
+                end)
+
+
+
+
+                local element = {}
+                function element:Fire() callback() end
+                table.insert(tab._elements, element)
+                return element
+            end
+
+
+
+
+            return TabMt
+        end
+
+
+
+
+        function SimpleLib:Destroy()
+            if self._gui and self._gui.Parent then self._gui:Destroy() end
+        end
+
+
+
+
+        return SimpleLib
+    ]==]
+
+
+
+
+    local fn, err = loadstring(src)
+    if not fn then error("[SimpleLib] Error al compilar: " .. tostring(err)) end
+    return fn()
+end)()
+
+
+
+
+-- ============================================================
+-- Config global  (Prediction = 0.150 s = "150")
+-- ============================================================
+getgenv().Prediction = 0.150
+getgenv().AutoPrediction = true
+getgenv().FOV = 80
+getgenv().DontShootThesePeople = {}
+getgenv().AimKey = "L"
+
+
+
+
+-- ============================================================
+-- Estado interno
+-- ============================================================
+local SilentAim = true
+local ShowFOV = false
+local FOVColor = Color3.fromRGB(0, 255, 0)
+local GUIVisible = false
+local UI   -- declarado aqui para que los handlers lo vean al asignarse mas abajo
+
+
+
+
+-- ============================================================
+-- Refs safe
+-- ============================================================
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+
+
+
+local function safe(func, default)
+    return func or function(...) return default end
+end
+
+
+
+
+getrawmetatable = safe(getrawmetatable, nil)
+setreadonly = safe(setreadonly, nil)
+getconnections = safe(getconnections, function() return {} end)
+hookmetamethod = safe(hookmetamethod, nil)
+getgenv = getgenv or function() return _G end
+Drawing = Drawing or nil
+
+
+
+
+-- ============================================================
+-- Limpiar logs
+-- ============================================================
+if getconnections then
+    pcall(function()
+        for _, v in ipairs(getconnections(game:GetService("LogService").MessageOut)) do
+            v:Disable()
+        end
+    end)
+end
+
+
+
+
+-- ============================================================
+-- FOV Circle
+-- ============================================================
+local FOV_CIRCLE
+if Drawing then
+    FOV_CIRCLE = Drawing.new("Circle")
+    FOV_CIRCLE.Visible = false
+    FOV_CIRCLE.Filled = false
+    FOV_CIRCLE.Thickness = 1
+    FOV_CIRCLE.Transparency = 1
+    FOV_CIRCLE.Color = FOVColor
+    FOV_CIRCLE.Radius = getgenv().FOV
+    FOV_CIRCLE.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+end
+
+
+
+
+local fovLoopRunning = false
+local function startFOVLoop()
+    if fovLoopRunning then return end
+    fovLoopRunning = true
+    task.spawn(function()
+        while fovLoopRunning do
+            task.wait()
+            if FOV_CIRCLE then
+                FOV_CIRCLE.Position = Vector2.new(Mouse.X, Mouse.Y + 36)
+                FOV_CIRCLE.Visible = ShowFOV and SilentAim
+                FOV_CIRCLE.Radius = getgenv().FOV
+                FOV_CIRCLE.Color = SilentAim and FOVColor or Color3.fromRGB(255, 0, 0)
+            end
+        end
+    end)
+end
+startFOVLoop()
+
+
+
+
+-- ============================================================
+-- Target / hit part
+-- ============================================================
+local CurrentHitPart = "HumanoidRootPart"
+
+
+
+
+-- ============================================================
+-- Aim key toggle
+-- ============================================================
+local function keyCodeFromName(name)
+    if type(name) ~= "string" or name == "" then return nil end
+    local ok, code = pcall(function()
+        return Enum.KeyCode[name]
+    end)
+    return ok and code or nil
+end
+
+
+
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        local key = string.upper(getgenv().AimKey or "")
+        local code = keyCodeFromName(key)
+        if code and input.KeyCode == code then
+            SilentAim = not SilentAim
+            -- El warn lo emite el callback del toggle al sincronizar la UI
+            if _G.OnAimKeyChange then _G.OnAimKeyChange(SilentAim) end
+        end
+    end
+end)
+
+
+
+
+
+
+-- ============================================================
+-- Toggle GUI con la tecla Shift+N
+-- ============================================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.N then
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+            GUIVisible = not GUIVisible
+            if UI and UI.Toggle then UI:Toggle(GUIVisible) end
+        end
+    end
+end)
+
+
+
+
+-- ============================================================
+-- AutoPrediction basado en ping
+-- ============================================================
+local autoPredThread = nil
+local autoPredRunning = false
+local function startAutoPrediction()
+    if autoPredRunning then return end
+    autoPredRunning = true
+    autoPredThread = task.spawn(function()
+        while autoPredRunning and getgenv().AutoPrediction do
+            task.wait(0.5)
+            local ping = 0.1
+            pcall(function()
+                ping = (LocalPlayer.GetNetworkPing and LocalPlayer:GetNetworkPing()) or 0.1
+            end)
+            local newPred
+            if ping > 0.4 then
+                newPred = 0.200 + (ping - 0.4) * 0.25
+            else
+                newPred = 0.150 + (ping - 0.1) * 0.5
+            end
+            newPred = math.clamp(newPred, 0.05, 0.5)
+            getgenv().Prediction = newPred
+            if _G.OnPredictionChange then _G.OnPredictionChange(newPred) end
+        end
+        autoPredRunning = false
+    end)
+end
+local function stopAutoPrediction()
+    autoPredRunning = false
+end
+if getgenv().AutoPrediction then startAutoPrediction() end
+
+
+
+
+-- ============================================================
+-- Hook __index (núcleo silent aim)
+-- ============================================================
+local hookInstalled = false
+local function installHook()
+    if hookInstalled or not hookmetamethod then return end
+    hookInstalled = true
+
+
+
+
+    local oldIndex
+    oldIndex = hookmetamethod(game, "__index", function(self, Index)
+        local original = oldIndex(self, Index)
+        if self ~= Mouse then return original end
+        if Index ~= "Hit" and Index ~= "hit" and Index ~= "Target" and Index ~= "target" then
+            return original
+        end
+        local lookupHit = (Index == "Hit" or Index == "hit")
+        local lookupTarget = (Index == "Target" or Index == "target")
+        if not SilentAim then
+            return original
+        end
+
+
+
+
+        local Character = LocalPlayer.Character
+        if not Character or not Character:FindFirstChild("Head") then
+            return original
+        end
+
+
+
+
+        local Distance = math.huge
+        local Target = nil
+        local fovRadius = FOV_CIRCLE and FOV_CIRCLE.Radius or getgenv().FOV
+
+
+
+
+        for _, v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer
+                and not table.find(getgenv().DontShootThesePeople, v.Name)
+                and v.Character
+                and v.Character:FindFirstChild("HumanoidRootPart")
+                and v.Character:FindFirstChild("Humanoid")
+                and v.Character.Humanoid.Health > 0 then
+
+
+
+
+                local Enemy = v.Character
+                local part = Enemy:FindFirstChild(CurrentHitPart) or Enemy:FindFirstChild("HumanoidRootPart")
+                if part then
+                    local CastingFrom = CFrame.new(Camera.CFrame.Position, part.CFrame.Position) * CFrame.new(0, 0, -4)
+                    local RayCast = Ray.new(CastingFrom.Position, CastingFrom.LookVector * 9000)
+                    local _, ToSpace = workspace:FindPartOnRayWithIgnoreList(RayCast, {
+                        Character:FindFirstChild("Head"),
+                    })
+                    local RootWorld = (part.CFrame.Position - ToSpace).Magnitude
+
+
+
+
+                    if RootWorld < 4 then
+                        local Pos, Visible = Camera:WorldToScreenPoint(part.Position)
+                        if Visible and Pos.Z > 0 then
+                            local Real_Magnitude = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(Pos.X, Pos.Y)).Magnitude
+                            if Real_Magnitude < Distance and Real_Magnitude < fovRadius then
+                                Distance = Real_Magnitude
+                                Target = Enemy
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+
+
+
+        if Target
+            and Target:FindFirstChild(CurrentHitPart)
+            and Target:FindFirstChild("Humanoid")
+            and Target.Humanoid.Health > 0 then
+            local Madox = Target[CurrentHitPart]
+            local gravityCompensation = Vector3.new(0, (CurrentHitPart == "Head") and 0 or -workspace.Gravity * 0.05 * getgenv().Prediction, 0)
+            local Formulate = Madox.CFrame.Position + (Madox.AssemblyLinearVelocity * getgenv().Prediction) + gravityCompensation
+            if lookupHit then
+                return CFrame.new(Formulate)
+            elseif lookupTarget then
+                return Target
+            end
+        end
+        return original
+    end)
+end
+installHook()
+
+
+
+
+-- ============================================================
+-- GUI
+-- ============================================================
+UI = SimpleLib.new({ Title = "MZM MENU" })
+
+
+
+
+-- Tab: AIM
+local tabAim = UI:CreateTab("Aim")
+
+
+
+
+tabAim:CreateSection("General")
+local tgSilent = tabAim:CreateToggle("Silent Aim", SilentAim, function(v)
+    SilentAim = v
+    warn("[SILENTAIM] Silent:", v)
+end)
+
+
+-- Sincroniza el toggle de la UI cuando se cambia el SilentAim con la tecla (L por defecto)
+_G.OnAimKeyChange = function(v)
+    if tgSilent then
+        pcall(function() tgSilent:Set(v) end)
+    end
+end
+
+
+
+
+local tgShowFOV = tabAim:CreateToggle("Mostrar FOV Circle", ShowFOV, function(v)
+    ShowFOV = v
+end)
+
+
+
+
+tabAim:CreateSection("Prediccion")
+local function formatPred(v)
+    local s = string.format("%.3f", v)
+    if s:sub(1, 2) == "0." then s = "." .. s:sub(3) end
+    return s
+end
+local tbPrediction = tabAim:CreateTextBox("Prediction", formatPred(getgenv().Prediction), ".150", function(text, enter)
+    local num = tonumber(text)
+    if num then
+        getgenv().Prediction = num
+        if enter then
+            tbPrediction:Set(formatPred(num))
+            warn("[SILENTAIM] Prediction:", num)
+        end
+    end
+end)
+
+
+
+
+local tgAutoPred = tabAim:CreateToggle("Auto Prediction", getgenv().AutoPrediction, function(v)
+    getgenv().AutoPrediction = v
+    if v then
+        startAutoPrediction()
+    else
+        stopAutoPrediction()
+    end
+end)
+
+
+
+
+_G.OnPredictionChange = function(v)
+    if autoPredRunning and getgenv().AutoPrediction then
+        pcall(function()
+            if tbPrediction then tbPrediction:Set(formatPred(v)) end
+        end)
+    end
+end
+
+
+
+
+tabAim:CreateSection("Tecla Aim")
+local ddKey = tabAim:CreateDropdown("Aim Key",
+    { "Q", "E", "F", "L", "R", "T", "Y", "Z", "X", "C", "V", "B" },
+    string.upper(getgenv().AimKey),
+    function(v)
+        getgenv().AimKey = v
+        warn("[SILENTAIM] AimKey:", v)
+    end
+)
+
+
+
+
+tabAim:CreateSection("Target Part")
+local ddHitPart = tabAim:CreateDropdown("Hit Part", { "Head", "HumanoidRootPart" }, CurrentHitPart, function(v)
+    CurrentHitPart = v
+end)
+
+
+
+
+-- Tab: FOV
+local tabFOV = UI:CreateTab("FOV")
+
+
+
+
+tabFOV:CreateSection("Tamaño")
+local slFOV = tabFOV:CreateSlider("FOV Radius", 20, 500, getgenv().FOV, " px", function(v)
+    getgenv().FOV = v
+    if FOV_CIRCLE then FOV_CIRCLE.Radius = v end
+end)
+
+
+
+
+tabFOV:CreateSection("Color")
+local ddColor = tabFOV:CreateDropdown("Color del Circle",
+    { "Verde", "Rojo", "Azul", "Blanco", "Amarillo", "Morado", "Cyan" },
+    "Verde",
+    function(v)
+        local palette = {
+            ["Verde"]    = Color3.fromRGB(0, 255, 0),
+            ["Rojo"]     = Color3.fromRGB(255, 0, 0),
+            ["Azul"]     = Color3.fromRGB(0, 170, 255),
+            ["Blanco"]   = Color3.fromRGB(255, 255, 255),
+            ["Amarillo"] = Color3.fromRGB(255, 220, 0),
+            ["Morado"]   = Color3.fromRGB(170, 0, 255),
+            ["Cyan"]     = Color3.fromRGB(0, 255, 220),
+        }
+        FOVColor = palette[v] or FOVColor
+        if FOV_CIRCLE then FOV_CIRCLE.Color = FOVColor end
+    end
+)
+
+
+
+
+-- Tab: Whitelist
+local tabWL = UI:CreateTab("Whitelist")
+
+
+
+
+local ddWhitelist
+local function refreshWhitelistUI()
+    if ddWhitelist then
+        local opts = {}
+        for _, n in ipairs(getgenv().DontShootThesePeople) do
+            if n ~= "" then table.insert(opts, n) end
+        end
+        if #opts == 0 then opts = { "(vacio)" } end
+        ddWhitelist:Update(opts)
+    end
+end
+
+
+
+
+tabWL:CreateSection("Jugadores a ignorar")
+tabWL:CreateTextBox("Agregar jugador(es)", "", "Usuario1, Usuario2, ...", function(text, enter)
+    for name in string.gmatch(text, "[^,%s]+") do
+        if name ~= "" and not table.find(getgenv().DontShootThesePeople, name) then
+            table.insert(getgenv().DontShootThesePeople, name)
+            warn("[SILENTAIM] Agregado a whitelist:", name)
+        end
+    end
+    refreshWhitelistUI()
+end)
+
+
+
+
+tabWL:CreateButton("Limpiar whitelist", function()
+    getgenv().DontShootThesePeople = {}
+    warn("[SILENTAIM] Whitelist limpiada")
+    refreshWhitelistUI()
+end)
+
+
+
+
+tabWL:CreateButton("Mostrar whitelist en consola", function()
+    warn("[SILENTAIM] Whitelist actual:")
+    for i, n in ipairs(getgenv().DontShootThesePeople) do
+        warn("  " .. i .. ":", n)
+    end
+    if #getgenv().DontShootThesePeople == 0 then
+        warn("  (vacio)")
+    end
+end)
+
+
+
+
+ddWhitelist = tabWL:CreateDropdown("Lista actual (click para remover)", { "(vacio)" }, nil, function(v)
+    if v ~= "(vacio)" then
+        local idx = table.find(getgenv().DontShootThesePeople, v)
+        if idx then
+            table.remove(getgenv().DontShootThesePeople, idx)
+            warn("[SILENTAIM] Removido:", v)
+            refreshWhitelistUI()
+        end
+    end
+end)
+
+
+
+
+-- Tab: Util
+local tabUtil = UI:CreateTab("Util")
+
+
+
+
+tabUtil:CreateSection("Reset")
+
+tabUtil:CreateButton("Reset configuracion", function()
+    getgenv().Prediction = 0.150
+    getgenv().AutoPrediction = true
+    getgenv().FOV = 80
+    getgenv().AimKey = "L"
+    getgenv().DontShootThesePeople = {}
+    CurrentHitPart = "HumanoidRootPart"
+    if tbPrediction then tbPrediction:Set(formatPred(0.150)) end
+    if slFOV then slFOV:Set(80) end
+    if ddKey then ddKey:Set("L") end
+    if ddHitPart then ddHitPart:Set("HumanoidRootPart") end
+    if tgAutoPred then
+        stopAutoPrediction()
+        getgenv().AutoPrediction = true
+        tgAutoPred:Set(true)
+    end
+    refreshWhitelistUI()
+    warn("[SILENTAIM] Configuracion reseteada")
+end)
+
+
+
+
+tabUtil:CreateSection("Creditos")
+tabUtil:CreateButton("Made By Zen / Adaptado con UI", function()
+    print("[SILENTAIM] Base original: Made By Zen, UI por SimpleLib")
+end)
+
+print("[SILENTAIM] Script cargado. Presiona " .. string.upper(getgenv().AimKey) .. " para toggle aim.")
+print("[SILENTAIM] Presiona Shift+N para esconder/mostrar la GUI.")
