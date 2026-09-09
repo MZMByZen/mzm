@@ -1,0 +1,342 @@
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+
+local Config = {
+	autoM2        = true,   
+	detectTouches = true,   
+	remoteName    = "kick", 
+	cooldown      = 0.3,    
+	touchDistance = 4,      
+	trackPosition = false,  
+	selfNear      = true,   
+}
+
+
+local COLORS = {
+	background = Color3.fromRGB(30, 10, 52),
+	surface    = Color3.fromRGB(48, 18, 82),
+	border     = Color3.fromRGB(20, 6, 38),
+	accent     = Color3.fromRGB(126, 45, 200),
+	hover      = Color3.fromRGB(150, 60, 235),
+	text       = Color3.fromRGB(235, 230, 245),
+	textDim    = Color3.fromRGB(175, 165, 200),
+	green      = Color3.fromRGB(110, 255, 170),
+	red        = Color3.fromRGB(255, 110, 110),
+}
+
+
+local function ui(cls, props)
+	local i = Instance.new(cls)
+	local parent = props.Parent
+	for k, v in pairs(props) do
+		if k ~= "Parent" then i[k] = v end
+	end
+	if parent then i.Parent = parent end
+	return i
+end
+local function rounde(inst, radius)
+	local c = Instance.new("UICorner", inst)
+	c.CornerRadius = radius or UDim.new(1, 0)
+end
+local function stroke(inst, color, thickness)
+	local s = Instance.new("UIStroke", inst)
+	s.Color = color or COLORS.border
+	s.Thickness = thickness or 2
+end
+
+
+local function makeToggle(parent, text, get, set)
+	local row = ui("Frame", { Parent = parent, Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1 })
+	ui("TextLabel", { Parent = row, BackgroundTransparency = 1, Text = text, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = COLORS.text, Size = UDim2.new(0, 290, 1, 0), Position = UDim2.new(0, 10, 0, 0) })
+	local knob = ui("TextButton", { Parent = row, BackgroundColor3 = COLORS.surface, Text = "", AutoButtonColor = false, Size = UDim2.new(0, 52, 0, 22), Position = UDim2.new(1, -62, -4, 0) })
+	local dot = ui("Frame", { Parent = knob, BackgroundColor3 = COLORS.textDim, Size = UDim2.new(0, 16, 0, 16), Position = UDim2.new(0, 3, 3, 0) })
+	rounde(knob); rounde(dot); stroke(knob, COLORS.border, 1)
+	local function refresh()
+		local on = get()
+		knob.BackgroundColor3 = on and COLORS.accent or COLORS.surface
+		dot.Position = on and UDim2.new(1, -19, 3, 0) or UDim2.new(0, 3, 3, 0)
+		dot.BackgroundColor3 = on and COLORS.hover or COLORS.textDim
+	end
+	knob.MouseButton1Click:Connect(function() set(not get()); refresh() end)
+	refresh()
+end
+
+local function makeSlider(parent, text, min, max, fmt, get, set)
+	local row = ui("Frame", { Parent = parent, Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1 })
+	ui("TextLabel", { Parent = row, BackgroundTransparency = 1, Text = text, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = COLORS.text, Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, 10, 0, 0) })
+	local val = ui("TextLabel", { Parent = row, BackgroundTransparency = 1, Text = "", TextXAlignment = Enum.TextXAlignment.Right, Font = Enum.Font.GothamSemibold, TextSize = 13, TextColor3 = COLORS.accent, Size = UDim2.new(0, 80, 1, 0), Position = UDim2.new(1, -90, 0, 0) })
+	local bar = ui("Frame", { Parent = row, BackgroundColor3 = COLORS.surface, BackgroundTransparency = 0.1, Size = UDim2.new(1, -320, 0, 6), Position = UDim2.new(0, 215, 0, 14) })
+	local fill = ui("Frame", { Parent = bar, BackgroundColor3 = COLORS.accent, Size = UDim2.new(0, 0, 1, 0) })
+	local knob = ui("Frame", { Parent = bar, AnchorPoint = UDim2.new(0.5, 0.5), BackgroundColor3 = COLORS.hover, Size = UDim2.new(0, 14, 0, 14), Position = UDim2.new(0, 0, 0.5, 0), ZIndex = 2 })
+	rounde(bar, UDim.new(1, 0)); rounde(fill, UDim.new(1, 0)); rounde(knob)
+	stroke(bar, COLORS.border, 1); stroke(knob, COLORS.accent, 2)
+	local function refresh()
+		local t = math.clamp((get() - min) / (max - min), 0, 1)
+		fill.Size = UDim2.new(t, 0, 1, 0)
+		knob.Position = UDim2.new(t, 0, 0.5, 0)
+		val.Text = fmt(get())
+	end
+	local function pointToMouse()
+		local rel = math.clamp((UserInputService:GetMouseLocation().X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+		set(min + (max - min) * rel)
+		refresh()
+	end
+	local dragging = false
+	bar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; pointToMouse() end
+	end)
+	bar.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseButton1 then pointToMouse() end
+	end)
+	bar.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+	end)
+	refresh()
+end
+
+local function makeTextBox(parent, text, get, set)
+	local row = ui("Frame", { Parent = parent, Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1 })
+	ui("TextLabel", { Parent = row, BackgroundTransparency = 1, Text = text, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = COLORS.text, Size = UDim2.new(0, 200, 1, 0), Position = UDim2.new(0, 10, 0, 0) })
+	local box = ui("TextBox", { Parent = row, BackgroundColor3 = COLORS.surface, BackgroundTransparency = 0.1, Text = get(), PlaceholderColor3 = COLORS.textDim, TextColor3 = COLORS.text, Font = Enum.Font.Gotham, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(0, 170, 0, 24), Position = UDim2.new(1, -180, 0, 5) })
+	rounde(box); stroke(box, COLORS.border, 1)
+	box.FocusLost:Connect(function(enterPressed) if enterPressed then set(box.Text) end end)
+end
+
+-- [6] HUD
+local ScreenGui = ui("ScreenGui", { Parent = PlayerGui, Name = "BallHUD", ResetOnSpawn = false })
+local Main = ui("Frame", {
+	Parent = ScreenGui, AnchorPoint = UDim2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8),
+	Size = UDim2.new(0, 470, 0, 268), BackgroundColor3 = COLORS.background, BackgroundTransparency = 0.12,
+})
+rounde(Main, UDim.new(0, 16)); stroke(Main, COLORS.border, 3)
+
+local title = ui("TextLabel", { Parent = Main, BackgroundTransparency = 1, Text = "⚽ Ball HUD  ·  arrastra para mover", Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = COLORS.textDim, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 20) })
+local dragData
+title.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragData = input.Position - Vector3.new(Main.AbsolutePosition.X, Main.AbsolutePosition.Y, 0)
+	end
+end)
+title.InputChanged:Connect(function(input)
+	if dragData and input.UserInputType == Enum.UserInputType.MouseButton1 then
+		local p = input.Position - dragData
+		Main.Position = UDim2.fromOffset(p.X, p.Y)
+	end
+end)
+title.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then dragData = nil end
+end)
+
+local TabBar = ui("Frame", { Parent = Main, BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, 34), Position = UDim2.new(0, 8, 0, 22) })
+local tabNames = { "ANTI-ROBO", "DETECCIÓN", "INFO" }
+local tabButtons, tabContents = {}, {}
+for i_, name in ipairs(tabNames) do
+	tabButtons[i_] = ui("TextButton", {
+		Parent = TabBar, Text = name, Font = Enum.Font.GothamBold, TextSize = 12,
+		BackgroundColor3 = COLORS.surface, TextColor3 = COLORS.textDim, AutoButtonColor = false,
+		Size = UDim2.new(0, 140, 0, 30), Position = UDim2.new(0, 146 * (i_ - 1), 0, 2),
+	})
+	rounde(tabButtons[i_], UDim.new(0, 10)); stroke(tabButtons[i_], COLORS.border, 1)
+end
+local Content = ui("Frame", { Parent = Main, BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, 196), Position = UDim2.new(0, 8, 0, 60) })
+local function makeTab()
+	local f = ui("Frame", { Parent = Content, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0) })
+	tabContents[#tabContents + 1] = f
+	return f
+end
+
+
+local tab1 = makeTab()
+makeToggle(tab1, "Auto-M2 activado", function() return Config.autoM2 end, function(v) Config.autoM2 = v end)
+makeTextBox(tab1, "Nombre del remoto (M2)", function() return Config.remoteName end, function(v) Config.remoteName = v end)
+makeSlider(tab1, "Cooldown entre M2", 0.1, 1, function(v) return string.format("%.2f s", v) end, function() return Config.cooldown end, function(v) Config.cooldown = v end)
+makeSlider(tab1, "Distancia de reacción", 1, 15, function(v) return string.format("%.1f studs", v) end, function() return Config.touchDistance end, function(v) Config.touchDistance = v end)
+
+
+local tab2 = makeTab()
+makeToggle(tab2, "Registrar toques de la pelota", function() return Config.detectTouches end, function(v) Config.detectTouches = v end)
+makeToggle(tab2, "Rastrear posición (imprimir)", function() return Config.trackPosition end, function(v) Config.trackPosition = v end)
+makeToggle(tab2, "Solo si estoy cerca de la pelota", function() return Config.selfNear end, function(v) Config.selfNear = v end)
+ui("TextLabel", { Parent = tab2, BackgroundTransparency = 1, TextWrapped = true, Text = "El sistema detecta cuando la pelota golpea a un jugador, cuando otros jugadores se acercan a la pelota, y la re-detecta si se destruye o re-spawnea.", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = COLORS.textDim, Size = UDim2.new(1, -20, 0, 90), Position = UDim2.new(0, 10, 0, 106) })
+
+
+local tab3 = makeTab()
+local ballStatus = ui("TextLabel", { Parent = tab3, BackgroundTransparency = 1, Text = "", Font = Enum.Font.GothamSemibold, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = COLORS.text, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.new(0, 10, 0, 10) })
+local remoteStatus = ui("TextLabel", { Parent = tab3, BackgroundTransparency = 1, Text = "", Font = Enum.Font.GothamSemibold, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = COLORS.text, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.new(0, 10, 0, 40) })
+local touchStatus = ui("TextLabel", { Parent = tab3, BackgroundTransparency = 1, Text = "", Font = Enum.Font.GothamSemibold, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = COLORS.text, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.new(0, 10, 0, 70) })
+ui("TextLabel", { Parent = tab3, BackgroundTransparency = 1, TextWrapped = true, Text = "Ajustes en vivo desde el HUD. Si el M2 no funciona, cambia el nombre del remoto en la pestaña ANTI-ROBO.", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = COLORS.textDim, Size = UDim2.new(1, -20, 0, 70), Position = UDim2.new(0, 10, 0, 110) })
+
+local function activateTab(i)
+	for k, btn in ipairs(tabButtons) do
+		btn.BackgroundColor3 = k == i and COLORS.accent or COLORS.surface
+		btn.TextColor3 = k == i and Color3.new(1, 1, 1) or COLORS.textDim
+	end
+	for k, ctn in ipairs(tabContents) do
+		ctn.Visible = (k == i)
+	end
+end
+for i_ in ipairs(tabButtons) do
+	tabButtons[i_].MouseButton1Click:Connect(function() activateTab(i_) end)
+end
+activateTab(1)
+
+
+local Ball = nil
+local ballFolder = Workspace:WaitForChild("BallFolderServer", 5)
+
+local function waitForBall()
+	if not ballFolder then return nil end
+	Ball = ballFolder:WaitForChild("ballEntity", 5)
+	if Ball then
+		print("[DETECCION] Pelota encontrada:", Ball:GetFullName())
+		setupBall()
+	end
+	return Ball
+end
+
+
+local lastTouchPlayer = "Ninguno"
+local lastTouchTime = os.clock()
+local function onBallTouched(hit)
+	if not Config.detectTouches then return end
+	if not hit or not hit.Parent then return end
+	if hit.Parent:FindFirstChildOfClass("Humanoid") then
+		lastTouchPlayer = hit.Parent.Name
+		lastTouchTime = os.clock()
+		print("[DETECCION] La pelota tocó a:", hit.Parent.Name)
+	end
+end
+
+local function setupBall()
+	if not Ball then return end
+	local prim = Ball:IsA("Model") and Ball.PrimaryPart or (Ball:IsA("BasePart") and Ball or nil)
+	if prim then
+		prim.Touched:Connect(onBallTouched)
+	end
+	
+	Ball.AncestryChanged:Connect(function()
+		if not Ball.Parent or Ball.Parent == nil then
+			print("[DETECCION] La pelota fue eliminada o movida")
+		end
+	end)
+end
+
+Ball = waitForBall()
+
+
+local function findKickRemote()
+	for _, inst in ipairs(game:GetDescendants()) do
+		local n = string.lower(inst.Name)
+		if (inst:IsA("RemoteEvent") or inst:IsA("RemoteFunction")) and n:find(string.lower(Config.remoteName)) then
+			return inst
+		end
+	end
+	return nil
+end
+
+local kickRemote = findKickRemote()
+task.spawn(function() 
+	while true do
+		if Config.remoteName and (not kickRemote) then
+			kickRemote = findKickRemote()
+		end
+		task.wait(3)
+	end
+end)
+
+local function getBallPosition()
+	if not Ball then return nil end
+	if Ball:IsA("BasePart") then
+		return Ball.Position
+	elseif Ball:IsA("Model") and Ball.PrimaryPart then
+		return Ball.PrimaryPart.Position
+	end
+	return nil
+end
+
+local function doM2()
+	if not kickRemote then return end
+	if kickRemote:IsA("RemoteEvent") then
+		kickRemote:FireServer()
+	elseif kickRemote:IsA("RemoteFunction") then
+		task.spawn(function() pcall(function() kickRemote:InvokeServer() end) end)
+	end
+end
+
+local function otherPlayerOnBall()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	local ballPos = getBallPosition()
+	if not root or not ballPos then return false end
+	if Config.selfNear and (root.Position - ballPos).Magnitude > Config.touchDistance * 1.5 then
+		return false
+	end
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local otherRoot = player.Character:FindFirstChild("HumanoidRootPart")
+			if otherRoot and (otherRoot.Position - ballPos).Magnitude <= Config.touchDistance then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+
+task.spawn(function()
+	while true do
+		task.wait(Config.cooldown)
+		if Config.autoM2 and otherPlayerOnBall() then
+			doM2()
+		end
+	end
+end)
+
+
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		if Config.trackPosition then
+			local pos = getBallPosition()
+			if pos then print("[DETECCION] Posición:", pos) end
+		end
+	end
+end)
+
+
+if ballFolder then
+	ballFolder.ChildAdded:Connect(function(child)
+		if child.Name == "ballEntity" then
+			waitForBall()
+			print("[DETECCION] Pelota re-spawneada")
+		end
+	end)
+end
+task.spawn(function() 
+	while true do
+		task.wait(2)
+		if not Ball or not Ball.Parent then
+			Ball = waitForBall()
+		end
+	end
+end)
+
+
+task.spawn(function()
+	while true do
+		local hasBall = Ball ~= nil and Ball.Parent ~= nil
+		ballStatus.Text = hasBall and "● Pelota: CONECTADA" or "● Pelota: BUSCANDO..."
+		ballStatus.TextColor3 = hasBall and COLORS.green or COLORS.red
+		remoteStatus.Text = kickRemote and ("● Remoto M2 ('" .. Config.remoteName .. "'): ENCONTRADO") or ("● Remoto M2 ('" .. Config.remoteName .. "'): NO ENCONTRADO")
+		remoteStatus.TextColor3 = kickRemote and COLORS.green or COLORS.red
+		local secs = math.max(0, math.floor(os.clock() - lastTouchTime))
+		touchStatus.Text = "● Último toque: " .. lastTouchPlayer .. " (hace " .. secs .. "s)"
+		touchStatus.TextColor3 = (lastTouchPlayer ~= "Ninguno") and COLORS.green or COLORS.textDim
+		task.wait(1)
+	end
+end)
