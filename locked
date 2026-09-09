@@ -1,22 +1,26 @@
+-- ⚽ BALL SYSTEM + HUD COMPLETO (un solo LocalScript -> StarterPlayerScripts)
+-- Incluye: detección de pelota (spawn/respawn/toques/eliminación),
+--          Auto-M2 anti-robo y HUD burbuja transparente con pestañas.
 
+-- [1] SERVICIOS
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-
+-- [2] CONFIG (ajustable desde el HUD en vivo)
 local Config = {
-	autoM2        = true,   
-	detectTouches = true,   
-	remoteName    = "kick", 
-	cooldown      = 0.3,    
-	touchDistance = 4,      
-	trackPosition = false,  
-	selfNear      = true,   
+	autoM2        = true,   -- dispara el remoto de patada/robo
+	detectTouches = true,   -- registra cuando la pelota toca a un jugador
+	remoteName    = "kick", -- nombre del remoto del M2 en el juego
+	cooldown      = 0.3,    -- segundos entre M2
+	touchDistance = 4,      -- distancia para detectar rivales (studs)
+	trackPosition = false,  -- imprime la posición cada 0.5s
+	selfNear      = true,   -- solo reacciona si estoy cerca de la pelota
 }
 
-
+-- [3] PALETA MORADA OSCURA
 local COLORS = {
 	background = Color3.fromRGB(30, 10, 52),
 	surface    = Color3.fromRGB(48, 18, 82),
@@ -29,7 +33,7 @@ local COLORS = {
 	red        = Color3.fromRGB(255, 110, 110),
 }
 
-
+-- [4] UTILIDADES UI
 local function ui(cls, props)
 	local i = Instance.new(cls)
 	local parent = props.Parent
@@ -49,7 +53,7 @@ local function stroke(inst, color, thickness)
 	s.Thickness = thickness or 2
 end
 
-
+-- [5] COMPONENTES (Toggle / Slider / TextBox)
 local function makeToggle(parent, text, get, set)
 	local row = ui("Frame", { Parent = parent, Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1 })
 	ui("TextLabel", { Parent = row, BackgroundTransparency = 1, Text = text, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = COLORS.text, Size = UDim2.new(0, 290, 1, 0), Position = UDim2.new(0, 10, 0, 0) })
@@ -150,21 +154,21 @@ local function makeTab()
 	return f
 end
 
-
+-- TAB 1: Anti-Robo
 local tab1 = makeTab()
 makeToggle(tab1, "Auto-M2 activado", function() return Config.autoM2 end, function(v) Config.autoM2 = v end)
 makeTextBox(tab1, "Nombre del remoto (M2)", function() return Config.remoteName end, function(v) Config.remoteName = v end)
 makeSlider(tab1, "Cooldown entre M2", 0.1, 1, function(v) return string.format("%.2f s", v) end, function() return Config.cooldown end, function(v) Config.cooldown = v end)
 makeSlider(tab1, "Distancia de reacción", 1, 15, function(v) return string.format("%.1f studs", v) end, function() return Config.touchDistance end, function(v) Config.touchDistance = v end)
 
-
+-- TAB 2: Detección
 local tab2 = makeTab()
 makeToggle(tab2, "Registrar toques de la pelota", function() return Config.detectTouches end, function(v) Config.detectTouches = v end)
 makeToggle(tab2, "Rastrear posición (imprimir)", function() return Config.trackPosition end, function(v) Config.trackPosition = v end)
 makeToggle(tab2, "Solo si estoy cerca de la pelota", function() return Config.selfNear end, function(v) Config.selfNear = v end)
 ui("TextLabel", { Parent = tab2, BackgroundTransparency = 1, TextWrapped = true, Text = "El sistema detecta cuando la pelota golpea a un jugador, cuando otros jugadores se acercan a la pelota, y la re-detecta si se destruye o re-spawnea.", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = COLORS.textDim, Size = UDim2.new(1, -20, 0, 90), Position = UDim2.new(0, 10, 0, 106) })
 
-
+-- TAB 3: Info / Estado
 local tab3 = makeTab()
 local ballStatus = ui("TextLabel", { Parent = tab3, BackgroundTransparency = 1, Text = "", Font = Enum.Font.GothamSemibold, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = COLORS.text, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.new(0, 10, 0, 10) })
 local remoteStatus = ui("TextLabel", { Parent = tab3, BackgroundTransparency = 1, Text = "", Font = Enum.Font.GothamSemibold, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = COLORS.text, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.new(0, 10, 0, 40) })
@@ -185,7 +189,7 @@ for i_ in ipairs(tabButtons) do
 end
 activateTab(1)
 
-
+-- [7] DETECCIÓN DE LA PELOTA
 local Ball = nil
 local ballFolder = Workspace:WaitForChild("BallFolderServer", 5)
 
@@ -199,7 +203,7 @@ local function waitForBall()
 	return Ball
 end
 
-
+-- Toques de la pelota (cambia el estado en la pestaña INFO)
 local lastTouchPlayer = "Ninguno"
 local lastTouchTime = os.clock()
 local function onBallTouched(hit)
@@ -218,7 +222,7 @@ local function setupBall()
 	if prim then
 		prim.Touched:Connect(onBallTouched)
 	end
-	
+	-- detecta eliminación o movimiento
 	Ball.AncestryChanged:Connect(function()
 		if not Ball.Parent or Ball.Parent == nil then
 			print("[DETECCION] La pelota fue eliminada o movida")
@@ -228,7 +232,7 @@ end
 
 Ball = waitForBall()
 
-
+-- [8] AUTO-M2 (remoto del juego)
 local function findKickRemote()
 	for _, inst in ipairs(game:GetDescendants()) do
 		local n = string.lower(inst.Name)
@@ -240,7 +244,7 @@ local function findKickRemote()
 end
 
 local kickRemote = findKickRemote()
-task.spawn(function() 
+task.spawn(function() -- re-busca si cambias el nombre o aún no carga
 	while true do
 		if Config.remoteName and (not kickRemote) then
 			kickRemote = findKickRemote()
@@ -287,7 +291,7 @@ local function otherPlayerOnBall()
 	return false
 end
 
-
+-- [9] BUCLE PRINCIPAL (Auto-M2)
 task.spawn(function()
 	while true do
 		task.wait(Config.cooldown)
@@ -297,7 +301,7 @@ task.spawn(function()
 	end
 end)
 
-
+-- [10] RASTREO DE POSICIÓN (opcional)
 task.spawn(function()
 	while true do
 		task.wait(0.5)
@@ -308,7 +312,7 @@ task.spawn(function()
 	end
 end)
 
-
+-- [11] RE-DETECCIÓN (re-spawn o destrucción)
 if ballFolder then
 	ballFolder.ChildAdded:Connect(function(child)
 		if child.Name == "ballEntity" then
@@ -317,7 +321,7 @@ if ballFolder then
 		end
 	end)
 end
-task.spawn(function() 
+task.spawn(function() -- respaldo: si la pelota desaparece, vuelve a buscarla
 	while true do
 		task.wait(2)
 		if not Ball or not Ball.Parent then
@@ -326,7 +330,7 @@ task.spawn(function()
 	end
 end)
 
-
+-- [12] ESTADO EN LA PESTAÑA INFO
 task.spawn(function()
 	while true do
 		local hasBall = Ball ~= nil and Ball.Parent ~= nil
